@@ -554,21 +554,53 @@
                 <div class="auth-badge-dot"></div> Connection Secure
             </div>
 
-            <div class="input-group">
-                <label class="input-label">Username</label>
-                <input type="text" id="loginUsername" placeholder="Enter operator ID" value="admin">
+            <!-- Auth Mode Switcher -->
+            <div style="display: flex; gap: 8px; margin-bottom: 20px; background: var(--bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+                <button type="button" id="tabLoginBtn" class="btn btn-sm" style="flex: 1; background: var(--primary); color: var(--btn-text); font-weight: 700; border: none; cursor: pointer;" onclick="switchAuthMode('login')">Sign In</button>
+                <button type="button" id="tabRegBtn" class="btn btn-sm" style="flex: 1; background: transparent; color: var(--text-muted); font-weight: 700; border: none; cursor: pointer;" onclick="switchAuthMode('register')">Register Operator</button>
             </div>
-            <div class="input-group">
-                <label class="input-label">Passcode</label>
-                <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
-            </div>
-            <div class="input-group">
-                <label class="input-label">Car Wi-Fi Password</label>
-                <input type="password" id="loginCarWifi" placeholder="Enter car Wi-Fi passcode" value="123456">
-            </div>
-            <div id="loginError" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
 
-            <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Initialize Session</button>
+            <!-- Sign In Form -->
+            <div id="loginForm">
+                <div class="input-group">
+                    <label class="input-label">Operator ID / Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter operator ID" value="admin">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Passcode</label>
+                    <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Car Wi-Fi Password <span style="font-size:0.7rem; color:var(--text-muted);">(Default: 123456)</span></label>
+                    <input type="password" id="loginCarWifi" placeholder="Enter car Wi-Fi passcode" value="123456">
+                </div>
+                <div id="loginError" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
+
+                <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Initialize Session</button>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="hidden">
+                <div class="input-group">
+                    <label class="input-label">New Operator ID / Username</label>
+                    <input type="text" id="regUsername" placeholder="Create unique operator ID">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">New Passcode</label>
+                    <input type="password" id="regPassword" placeholder="Create secure passcode">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Confirm Passcode</label>
+                    <input type="password" id="regPasswordConfirm" placeholder="Re-enter secure passcode">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Assigned Car Wi-Fi Password <span style="font-size:0.7rem; color:var(--success); font-weight:700;">(Default: 123456)</span></label>
+                    <input type="text" id="regCarWifi" value="123456" readonly style="opacity: 0.85; cursor: not-allowed; background: var(--surface2);">
+                </div>
+                <div id="regFeedback" style="font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
+
+                <button class="btn btn-primary btn-full" id="regBtn" onclick="registerUser()">Register Operator</button>
+            </div>
         </div>
     </div>
 
@@ -676,6 +708,90 @@
         function cycleTheme() {
             currentThemeIndex = (currentThemeIndex + 1) % themes.length;
             document.documentElement.setAttribute('data-theme', themes[currentThemeIndex]);
+        }
+
+        function switchAuthMode(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('registerForm');
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabRegBtn = document.getElementById('tabRegBtn');
+            const loginErr = document.getElementById('loginError');
+            const regFeedback = document.getElementById('regFeedback');
+            if (loginErr) loginErr.style.display = 'none';
+            if (regFeedback) regFeedback.style.display = 'none';
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLoginBtn.style.background = 'var(--primary)';
+                tabLoginBtn.style.color = 'var(--btn-text)';
+                tabRegBtn.style.background = 'transparent';
+                tabRegBtn.style.color = 'var(--text-muted)';
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                tabRegBtn.style.background = 'var(--primary)';
+                tabRegBtn.style.color = 'var(--btn-text)';
+                tabLoginBtn.style.background = 'transparent';
+                tabLoginBtn.style.color = 'var(--text-muted)';
+            }
+        }
+
+        async function registerUser() {
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regPasswordConfirm').value;
+            const feedbackEl = document.getElementById('regFeedback');
+
+            if (!username) {
+                feedbackEl.style.color = 'var(--danger)';
+                feedbackEl.textContent = 'Please enter an operator username.';
+                feedbackEl.style.display = 'block';
+                return;
+            }
+            if (!password) {
+                feedbackEl.style.color = 'var(--danger)';
+                feedbackEl.textContent = 'Please enter a passcode.';
+                feedbackEl.style.display = 'block';
+                return;
+            }
+            if (password !== confirm) {
+                feedbackEl.style.color = 'var(--danger)';
+                feedbackEl.textContent = 'Passcodes do not match.';
+                feedbackEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    feedbackEl.style.color = 'var(--success)';
+                    feedbackEl.textContent = 'Operator registered! Default car linked (123456). Switching to Sign In...';
+                    feedbackEl.style.display = 'block';
+
+                    // Pre-fill login inputs
+                    document.getElementById('loginUsername').value = username;
+                    document.getElementById('loginPassword').value = password;
+                    document.getElementById('loginCarWifi').value = '123456';
+
+                    setTimeout(() => {
+                        switchAuthMode('login');
+                    }, 1200);
+                } else {
+                    feedbackEl.style.color = 'var(--danger)';
+                    feedbackEl.textContent = data.detail || 'Registration failed.';
+                    feedbackEl.style.display = 'block';
+                }
+            } catch (err) {
+                feedbackEl.style.color = 'var(--danger)';
+                feedbackEl.textContent = 'Connection error: ' + err.message;
+                feedbackEl.style.display = 'block';
+            }
         }
 
         async function login() {

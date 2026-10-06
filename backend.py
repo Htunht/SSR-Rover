@@ -820,8 +820,14 @@ def stream():
 def register(payload: RegisterPayload):
     db = SessionLocal()
     try:
+        username = payload.username.strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="Username cannot be empty")
+        if not payload.password:
+            raise HTTPException(status_code=400, detail="Password cannot be empty")
+
         existing_user = (
-            db.query(User).filter(User.username == payload.username).first()
+            db.query(User).filter(User.username == username).first()
         )
         if existing_user:
             raise HTTPException(
@@ -829,12 +835,32 @@ def register(payload: RegisterPayload):
             )
 
         new_user = User(
-            username=payload.username,
+            username=username,
             password_hash=get_password_hash(payload.password),
         )
         db.add(new_user)
+        db.flush()
+
+        # Link default car with default WiFi password ("123456")
+        car = Car(
+            car_name=f"{username}'s Rover",
+            wifi_password="123456",
+            owner_id=new_user.id,
+        )
+        db.add(car)
         db.commit()
-        return {"success": True, "message": "Account created successfully."}
+
+        add_log(
+            f"New user registered: '{new_user.username}' with default car WiFi"
+            " key (123456)"
+        )
+        return {
+            "success": True,
+            "message": "Account created successfully.",
+            "username": new_user.username,
+            "car_name": car.car_name,
+            "car_wifi": "123456",
+        }
     finally:
         db.close()
 
