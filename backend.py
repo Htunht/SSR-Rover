@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import requests
 from sqlalchemy import (
     Column,
@@ -44,7 +44,11 @@ def get_utc_now():
 
 
 # ================= Database Setup =================
-DATABASE_URL = "postgresql://postgres:shein123@localhost/SSR"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/ssr"
+)
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -150,7 +154,10 @@ app.add_middleware(
 
 @app.get("/")
 async def serve_ui():
-    return FileResponse("Combineindex.html")
+    ui_path = Path(__file__).parent / "frontend.html"
+    if not ui_path.exists():
+        ui_path = Path(__file__).parent / "Combineindex.html"
+    return FileResponse(ui_path)
 
 
 # ================= Pydantic Schemas =================
@@ -176,8 +183,16 @@ class MovePayload(BaseModel):
     direction: str
 
 
-class PanPayload(BaseModel):
-    angle: int
+class PanRequest(BaseModel):
+    angle: int = Field(..., ge=0, le=180)
+    session_id: int | str | None = None
+
+
+PanPayload = PanRequest
+
+
+class ActionPayload(BaseModel):
+    action: str
 
 
 class SystemState:
@@ -761,28 +776,37 @@ def move(payload: MovePayload):
     return {"status": "simulated", "direction": direction}
 
 
-@app.post("/api/control/pan")
-def pan(payload: PanPayload):
-    angle = payload.angle
-    if not (0 <= angle <= 180):
-        raise HTTPException(
-            status_code=400, detail="Angle must be between 0 and 180"
-        )
+@app.post("/api/control")
+def control(payload: ActionPayload):
+    action = payload.action.lower()
+    if action == "reverse":
+        action = "backward"
+    return move(MovePayload(direction=action))
 
+
+@app.post("/api/control/pan")
+async def control_pan(data: PanRequest):
+    angle = data.angle
     state.servo_angle = angle
     add_log(f"Camera Pan set to: {angle} degrees")
+    print(f"[SERVO] Camera Panned to: {angle}°")
 
     if state.mode == "esp32" and state.esp32_ip:
         esp32_url = f"http://{state.esp32_ip}/pan?angle={angle}"
         try:
             res = requests.get(esp32_url, timeout=1.5)
             res.raise_for_status()
-            return {"status": "relayed", "esp32_response": res.text}
+            return {
+                "status": "success",
+                "angle": angle,
+                "relayed": True,
+                "esp32_response": res.text,
+            }
         except Exception as e:
             add_log(f"Failed to send pan command to ESP32: {str(e)}")
-            return {"status": "failed", "error": str(e)}
+            return {"status": "success", "angle": angle, "warning": str(e)}
 
-    return {"status": "simulated", "angle": angle}
+    return {"status": "success", "angle": angle}
 
 
 @app.get("/api/stream")
@@ -878,3 +902,8 @@ def list_videos():
             status_code=500,
             detail=f"Could not read records directory: {str(e)}",
         )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend:app", host="0.0.0.0", port=8000, reload=True)

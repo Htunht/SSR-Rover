@@ -394,10 +394,22 @@
         }
 
         .d-btn:hover { background: var(--border); border-color: var(--primary); }
-        .d-btn:active { background: var(--primary); color: var(--btn-text); transform: scale(0.93); }
+        .d-btn:active, .d-btn.active {
+            background: var(--primary);
+            color: var(--btn-text);
+            transform: scale(0.93);
+            border-color: var(--primary-light);
+            box-shadow: 0 0 12px rgba(209, 149, 30, 0.5);
+        }
 
         .btn-stop { background: var(--danger); color: #fff; border-color: var(--danger); font-size: 0.75rem; }
         .btn-stop:hover { background: #b91c1c; }
+        .btn-stop:active, .btn-stop.active {
+            background: #b91c1c;
+            color: #fff;
+            transform: scale(0.93);
+            box-shadow: 0 0 12px rgba(231, 76, 60, 0.6);
+        }
 
         /* ================= Video History Panel ================= */
         .video-history-panel {
@@ -544,14 +556,19 @@
 
             <div class="input-group">
                 <label class="input-label">Username</label>
-                <input type="text" placeholder="Enter operator ID">
+                <input type="text" id="loginUsername" placeholder="Enter operator ID" value="admin">
             </div>
             <div class="input-group">
                 <label class="input-label">Passcode</label>
-                <input type="password" placeholder="Enter secure passcode">
+                <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
             </div>
+            <div class="input-group">
+                <label class="input-label">Car Wi-Fi Password</label>
+                <input type="password" id="loginCarWifi" placeholder="Enter car Wi-Fi passcode" value="123456">
+            </div>
+            <div id="loginError" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
 
-            <button class="btn btn-primary btn-full" onclick="login()">Initialize Session</button>
+            <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">Initialize Session</button>
         </div>
     </div>
 
@@ -574,7 +591,7 @@
         <main id="dashboardTab" class="dashboard-main">
             <div class="container" style="animation: fadeIn 0.4s ease-out;">
                 <h2>Live Telemetry</h2>
-                <p class="subtitle">Video feed and remote manual override controls.</p>
+                <p class="subtitle">Video feed & remote manual override controls. Use on-screen buttons, <b>WASD</b>, or <b>Arrow keys</b> (Space to Stop).</p>
 
                 <div class="video-container">
                     <img id="streamFeed" src="/api/stream" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; document.getElementById('camOffline').style.display='block';">
@@ -582,22 +599,36 @@
                 </div>
                 <div class="control-panel">
                     <div></div>
-                    <button class="d-btn" onclick="triggerCmd('FORWARD')">▲</button>
+                    <button class="d-btn" id="btnForward" onclick="triggerCmd('FORWARD')" title="Forward (W / ▲)">▲</button>
                     <div></div>
-                    <button class="d-btn" onclick="triggerCmd('LEFT')">◀</button>
-                    <button class="d-btn btn-stop" onclick="triggerCmd('STOP')">STOP</button>
-                    <button class="d-btn" onclick="triggerCmd('RIGHT')">▶</button>
+                    <button class="d-btn" id="btnLeft" onclick="triggerCmd('LEFT')" title="Left (A / ◀)">◀</button>
+                    <button class="d-btn btn-stop" id="btnStop" onclick="triggerCmd('STOP')" title="Stop (Space)">STOP</button>
+                    <button class="d-btn" id="btnRight" onclick="triggerCmd('RIGHT')" title="Right (D / ▶)">▶</button>
                     <div></div>
-                    <button class="d-btn" onclick="triggerCmd('REVERSE')">▼</button>
+                    <button class="d-btn" id="btnBackward" onclick="triggerCmd('REVERSE')" title="Backward (S / ▼)">▼</button>
                     <div></div>
+                </div>
+
+                <!-- Servo Pan Control Slider -->
+                <div style="max-width: 340px; margin: 24px auto; text-align: center; background: var(--surface2); padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                        <span style="font-size:0.85rem; font-weight:700; color:var(--text);">Camera Pan Angle</span>
+                        <span style="font-size:0.95rem; font-weight:900; color:var(--primary);"><span id="angleText">90</span>°</span>
+                    </div>
+                    <input type="range" id="panSlider" min="0" max="180" value="90" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="updateServoPan(this.value)">
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                        <span>0° (Left)</span>
+                        <span>90° (Center)</span>
+                        <span>180° (Right)</span>
+                    </div>
                 </div>
 
                 <div class="video-history-panel">
                     <div class="vh-header">
                         <h3>Event History</h3>
-                        <button class="vh-refresh-btn">↻ Sync</button>
+                        <button class="vh-refresh-btn" onclick="fetchVideos()">↻ Sync</button>
                     </div>
-                    <div class="vh-list">
+                    <div class="vh-list" id="videoList">
                         No recent events logged in the system database.
                     </div>
                 </div>
@@ -638,8 +669,7 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-         
-        // Array of themes based on your CSS variables
+        let currentSessionId = null;
         const themes = ['dark', 'light', 'bw'];
         let currentThemeIndex = 0;
 
@@ -648,106 +678,214 @@
             document.documentElement.setAttribute('data-theme', themes[currentThemeIndex]);
         }
 
-        function login() {
-            // Hide Auth View, Show Main App
-            document.getElementById('authView').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const carWifi = document.getElementById('loginCarWifi').value.trim();
+            const errEl = document.getElementById('loginError');
+            errEl.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        car_wifi: carWifi
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentSessionId = data.session_id;
+                    console.log("Session started:", currentSessionId);
+                    document.getElementById('authView').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    fetchVideos();
+                } else {
+                    errEl.textContent = data.detail || 'Access Denied: Invalid credentials';
+                    errEl.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Login error:", err);
+                errEl.textContent = 'Server connection failed: ' + err.message;
+                errEl.style.display = 'block';
+            }
         }
 
-        function logout() {
-            // Hide Main App, Show Auth View
+        async function logout() {
+            if (currentSessionId) {
+                try {
+                    await fetch(`/api/logout/${currentSessionId}`, { method: 'POST' });
+                } catch (err) {
+                    console.error("Logout error:", err);
+                }
+                currentSessionId = null;
+            }
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('authView').classList.remove('hidden');
-            // Reset to dashboard tab on logout
             switchTab('dashboard');
         }
 
         function switchTab(tabName) {
-            // Update Active link highlighting
             const links = document.querySelectorAll('.nav-link');
             links.forEach(link => link.classList.remove('active'));
-            event.target.classList.add('active');
+            if (window.event && window.event.target && window.event.target.classList) {
+                window.event.target.classList.add('active');
+            }
 
-            // Hide all tabs
             document.getElementById('dashboardTab').classList.add('hidden');
             document.getElementById('profileTab').classList.add('hidden');
 
-            // Show selected tab
             if (tabName === 'dashboard') {
                 document.getElementById('dashboardTab').classList.remove('hidden');
             } else if (tabName === 'profile') {
                 document.getElementById('profileTab').classList.remove('hidden');
             }
-            
-            // Close mobile menu if open
             document.getElementById('navMenu').classList.remove('open');
         }
 
         function toggleMobileNav() {
             document.getElementById('navMenu').classList.toggle('open');
         }
+
         function triggerCmd(command) {
             console.log("Command Sent: " + command);
+            let action = command.toLowerCase();
+            if (action === 'reverse') action = 'backward';
             fetch('/api/control', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ action: command.toLowerCase() })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
             })
             .catch(err => console.error("Control Error:", err));
         }
 
-    <!--new code for sesion--> 
-    const response = await fetch(
-    "http://127.0.0.1:8000/api/login",
-    {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            username: username,
-            password: password,
-            car_wifi: carWifi
-        })
-    }
-);
+        // ================= Keyboard Driving Controls =================
+        let activeDriveKey = null;
 
-const data = await response.json();
+        const KEY_COMMAND_MAP = {
+            'w': { cmd: 'FORWARD', btnId: 'btnForward' },
+            'arrowup': { cmd: 'FORWARD', btnId: 'btnForward' },
+            's': { cmd: 'REVERSE', btnId: 'btnBackward' },
+            'arrowdown': { cmd: 'REVERSE', btnId: 'btnBackward' },
+            'a': { cmd: 'LEFT', btnId: 'btnLeft' },
+            'arrowleft': { cmd: 'LEFT', btnId: 'btnLeft' },
+            'd': { cmd: 'RIGHT', btnId: 'btnRight' },
+            'arrowright': { cmd: 'RIGHT', btnId: 'btnRight' },
+            ' ': { cmd: 'STOP', btnId: 'btnStop' }
+        };
 
-if (data.success) {
-
-    currentSessionId = data.session_id;
-
-    console.log(
-        "Session started:",
-        currentSessionId
-    );
-
-    //show  dashboard
-}
-    async function logout() {
-
-    if (!currentSessionId) {
-        return;
-    }
-
-    const response = await fetch(
-        `http://127.0.0.1:8000/api/logout/${currentSessionId}`,
-        {
-            method: "POST"
+        function canDrive() {
+            const mainApp = document.getElementById('mainApp');
+            if (!mainApp || mainApp.classList.contains('hidden')) return false;
+            const dashboardTab = document.getElementById('dashboardTab');
+            if (!dashboardTab || dashboardTab.classList.contains('hidden')) return false;
+            return true;
         }
-    );
 
-    const data = await response.json();
+        window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            if (!canDrive()) return;
 
-    console.log("Logout:", data);
+            const key = e.key.toLowerCase();
+            const mapping = KEY_COMMAND_MAP[key];
 
-    currentSessionId = null;
+            if (mapping) {
+                e.preventDefault();
+                if (e.repeat) return; // Prevent repetitive spam on long hold
 
-    // show again Login page 
-}
+                activeDriveKey = key;
+                triggerCmd(mapping.cmd);
+
+                if (mapping.btnId) {
+                    const btn = document.getElementById(mapping.btnId);
+                    if (btn) btn.classList.add('active');
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            const key = e.key.toLowerCase();
+            const mapping = KEY_COMMAND_MAP[key];
+
+            if (mapping && mapping.btnId) {
+                const btn = document.getElementById(mapping.btnId);
+                if (btn) btn.classList.remove('active');
+            }
+
+            // Auto-stop when releasing directional driving keys
+            if (['w', 'arrowup', 's', 'arrowdown', 'a', 'arrowleft', 'd', 'arrowright'].includes(key)) {
+                if (activeDriveKey === key) {
+                    activeDriveKey = null;
+                    triggerCmd('STOP');
+                }
+            }
+        });
+
+        // Safety stop if window loses focus while driving
+        window.addEventListener('blur', () => {
+            if (activeDriveKey) {
+                activeDriveKey = null;
+                triggerCmd('STOP');
+                ['btnForward', 'btnBackward', 'btnLeft', 'btnRight', 'btnStop'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.remove('active');
+                });
+            }
+        });
+
+        // ================= Servo Pan Control =================
+        let servoDebounceTimer = null;
+
+        async function updateServoPan(angle) {
+            const angleVal = parseInt(angle);
+            const textEl = document.getElementById('angleText');
+            if (textEl) textEl.innerText = angleVal;
+
+            // Debounce rapid slider updates to prevent overwhelming network
+            clearTimeout(servoDebounceTimer);
+            servoDebounceTimer = setTimeout(async () => {
+                try {
+                    await fetch('/api/control/pan', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            angle: angleVal,
+                            session_id: currentSessionId
+                        })
+                    });
+                } catch (err) {
+                    console.error("Servo Control Error:", err);
+                }
+            }, 40);
+        }
+
+        async function fetchVideos() {
+            const listEl = document.getElementById('videoList');
+            if (!listEl) return;
+            try {
+                const res = await fetch('/api/videos');
+                const data = await res.json();
+                if (data.videos && data.videos.length > 0) {
+                    listEl.innerHTML = data.videos.map(v => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                            <span>📹 ${v}</span>
+                            <a href="/records/${v}" target="_blank" style="color:var(--primary); font-size:0.8rem; text-decoration:none;">View</a>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.textContent = 'No recordings found in system records.';
+                }
+            } catch (e) {
+                listEl.textContent = 'Could not load video history.';
+            }
+        }
     </script>
 </body>
 </html>
