@@ -356,6 +356,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            transition: max-width 0.3s ease, aspect-ratio 0.3s ease;
+        }
+
+        .video-container.vertical-mode {
+            max-width: 440px;
+            aspect-ratio: 3 / 4;
         }
 
         .camera-status {
@@ -391,6 +398,9 @@
             justify-content: center;
             align-items: center;
             user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
         }
 
         .d-btn:hover { background: var(--border); border-color: var(--primary); }
@@ -518,6 +528,14 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(209, 149, 30, 0); }
         }
 
+        @keyframes pulseRec {
+            0% { opacity: 0.3; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+        .pulse-rec {
+            animation: pulseRec 0.8s infinite alternate;
+        }
+
         /* Utility classes for JS toggling */
         .hidden { display: none !important; }
 
@@ -571,8 +589,8 @@
                     <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Car Wi-Fi Password <span style="font-size:0.7rem; color:var(--text-muted);">(Default: 123456)</span></label>
-                    <input type="password" id="loginCarWifi" placeholder="Enter car Wi-Fi passcode" value="123456">
+                    <label class="input-label">Car Wi-Fi Key <span style="font-size:0.7rem; color:var(--text-muted);">(1000 - 1010)</span></label>
+                    <input type="number" id="loginCarWifi" min="1000" max="1010" placeholder="e.g., 1001" value="1001">
                 </div>
                 <div id="loginError" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
 
@@ -594,12 +612,15 @@
                     <input type="password" id="regPasswordConfirm" placeholder="Re-enter secure passcode">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Assigned Car Wi-Fi Password <span style="font-size:0.7rem; color:var(--success); font-weight:700;">(Default: 123456)</span></label>
-                    <input type="text" id="regCarWifi" value="123456" readonly style="opacity: 0.85; cursor: not-allowed; background: var(--surface2);">
+                    <label class="input-label">Choose Car Wi-Fi Key <span style="font-size:0.7rem; color:var(--success); font-weight:700;">(1000 - 1010)</span></label>
+                    <input type="number" id="regCarWifi" min="1000" max="1010" placeholder="e.g., 1005">
                 </div>
                 <div id="regFeedback" style="font-size: 0.8rem; margin-bottom: 12px; display: none;"></div>
 
-                <button class="btn btn-primary btn-full" id="regBtn" onclick="registerUser()">Register Operator</button>
+                <button class="btn btn-primary btn-full" id="regBtn" onclick="registerUser()">Create Account</button>
+                <div style="text-align: center; margin-top: 14px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer;" onclick="toggleAuth('login')">
+                    Already have an account? <span style="color: var(--primary); font-weight: 700;">Login</span>
+                </div>
             </div>
         </div>
     </div>
@@ -625,9 +646,36 @@
                 <h2>Live Telemetry</h2>
                 <p class="subtitle">Video feed & remote manual override controls. Use on-screen buttons, <b>WASD</b>, or <b>Arrow keys</b> (Space to Stop).</p>
 
-                <div class="video-container">
-                    <img id="streamFeed" src="/api/stream" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; document.getElementById('camOffline').style.display='block';">
+                <div class="video-container vertical-mode" id="videoContainer">
+                    <img id="streamFeed" src="/api/stream" crossorigin="anonymous" style="width:100%; height:100%; object-fit:contain; background:#000;" onerror="this.style.display='none'; document.getElementById('camOffline').style.display='block';">
                     <div id="camOffline" class="camera-status" style="display:none;">NO SIGNAL / CAMERA OFFLINE</div>
+                </div>
+
+                <!-- Video Recording Bar & Orientation Controls -->
+                <div class="record-control-bar" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--border); padding:10px 16px; border-radius:10px; margin: 12px auto 16px auto; max-width: 640px; box-sizing: border-box; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <button id="recordBtn" class="btn btn-sm btn-danger" onclick="toggleRecording()" style="display:flex; align-items:center; gap:8px; font-weight:700; cursor:pointer;">
+                            <span id="recDot" style="width:10px; height:10px; border-radius:50%; background:#fff; display:inline-block;"></span>
+                            <span id="recordBtnText">Record Video</span>
+                        </button>
+                        <div id="recordingStatus" style="display:none; font-size:0.85rem; font-weight:700; color:var(--danger); align-items:center; gap:6px;">
+                            <span class="pulse-rec" style="width:8px; height:8px; background:var(--danger); border-radius:50%; display:inline-block;"></span>
+                            <span id="recTimerText">00:00 / 10:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Orientation & Rotation Controls -->
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button id="orientationBtn" class="btn btn-sm btn-outline" onclick="toggleCameraOrientation()" title="Switch between Vertical & Horizontal" style="display:flex; align-items:center; gap:6px; font-weight:700; cursor:pointer;">
+                            <span id="orientationIcon">📱</span>
+                            <span id="orientationText">Vertical View</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="rotateCameraStep(90)" title="Rotate 90 degrees" style="display:flex; align-items:center; gap:4px; font-weight:700; cursor:pointer;">
+                            🔄 90°
+                        </button>
+                    </div>
+
+                    <span id="recHint" style="font-size:0.75rem; color:var(--text-muted); width:100%; text-align:right;">Max: 10 mins (auto-downloads)</span>
                 </div>
                 <div class="control-panel">
                     <div></div>
@@ -737,27 +785,36 @@
             }
         }
 
+        function toggleAuth(mode) {
+            switchAuthMode(mode);
+        }
+
         async function registerUser() {
             const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value;
             const confirm = document.getElementById('regPasswordConfirm').value;
+            const regCarWifi = parseInt(document.getElementById('regCarWifi').value);
             const feedbackEl = document.getElementById('regFeedback');
 
-            if (!username) {
+            feedbackEl.style.display = 'none';
+
+            if (!username || !password || isNaN(regCarWifi)) {
                 feedbackEl.style.color = 'var(--danger)';
-                feedbackEl.textContent = 'Please enter an operator username.';
+                feedbackEl.textContent = 'Please fill in all fields to register.';
                 feedbackEl.style.display = 'block';
                 return;
             }
-            if (!password) {
-                feedbackEl.style.color = 'var(--danger)';
-                feedbackEl.textContent = 'Please enter a passcode.';
-                feedbackEl.style.display = 'block';
-                return;
-            }
+
             if (password !== confirm) {
                 feedbackEl.style.color = 'var(--danger)';
                 feedbackEl.textContent = 'Passcodes do not match.';
+                feedbackEl.style.display = 'block';
+                return;
+            }
+
+            if (regCarWifi < 1000 || regCarWifi > 1010) {
+                feedbackEl.style.color = 'var(--danger)';
+                feedbackEl.textContent = 'Car Wi-Fi Key must be exactly between 1000 and 1010.';
                 feedbackEl.style.display = 'block';
                 return;
             }
@@ -766,40 +823,58 @@
                 const res = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        car_wifi: regCarWifi
+                    })
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
                     feedbackEl.style.color = 'var(--success)';
-                    feedbackEl.textContent = 'Operator registered! Default car linked (123456). Switching to Sign In...';
+                    feedbackEl.textContent = 'Registration successful! Please login.';
                     feedbackEl.style.display = 'block';
 
                     // Pre-fill login inputs
                     document.getElementById('loginUsername').value = username;
                     document.getElementById('loginPassword').value = password;
-                    document.getElementById('loginCarWifi').value = '123456';
+                    document.getElementById('loginCarWifi').value = regCarWifi;
 
                     setTimeout(() => {
-                        switchAuthMode('login');
+                        toggleAuth('login');
                     }, 1200);
                 } else {
                     feedbackEl.style.color = 'var(--danger)';
-                    feedbackEl.textContent = data.detail || 'Registration failed.';
+                    feedbackEl.textContent = 'Registration Failed: ' + (data.detail || 'Unknown error');
                     feedbackEl.style.display = 'block';
                 }
             } catch (err) {
                 feedbackEl.style.color = 'var(--danger)';
-                feedbackEl.textContent = 'Connection error: ' + err.message;
+                feedbackEl.textContent = 'Cannot connect to Backend server: ' + err.message;
                 feedbackEl.style.display = 'block';
             }
         }
 
+        const register = registerUser;
+
         async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
-            const carWifi = document.getElementById('loginCarWifi').value.trim();
+            const carWifi = parseInt(document.getElementById('loginCarWifi').value);
             const errEl = document.getElementById('loginError');
             errEl.style.display = 'none';
+
+            if (!username || !password || isNaN(carWifi)) {
+                errEl.textContent = 'Please fill in all fields (Username, Passcode, Car Wi-Fi Key).';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            if (carWifi < 1000 || carWifi > 1010) {
+                errEl.textContent = 'ACCESS DENIED: Car Wi-Fi Key must be exactly between 1000 and 1010.';
+                errEl.style.display = 'block';
+                return;
+            }
 
             try {
                 const response = await fetch('/api/login', {
@@ -816,9 +891,16 @@
 
                 if (response.ok && data.success) {
                     currentSessionId = data.session_id;
-                    console.log("Session started:", currentSessionId);
+                    console.log("Session started in Database:", currentSessionId);
                     document.getElementById('authView').classList.add('hidden');
                     document.getElementById('mainApp').classList.remove('hidden');
+
+                    const feed = document.getElementById('streamFeed');
+                    feed.src = '/api/stream';
+                    feed.style.display = 'block';
+                    document.getElementById('camOffline').style.display = 'none';
+
+                    syncCameraOrientation();
                     fetchVideos();
                 } else {
                     errEl.textContent = data.detail || 'Access Denied: Invalid credentials';
@@ -832,18 +914,33 @@
         }
 
         async function logout() {
-            if (currentSessionId) {
-                try {
-                    await fetch(`/api/logout/${currentSessionId}`, { method: 'POST' });
-                } catch (err) {
-                    console.error("Logout error:", err);
-                }
-                currentSessionId = null;
+            if (!currentSessionId) return;
+
+            try {
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId })
+                });
+            } catch (err) {
+                console.error("Logout Error:", err);
             }
+
+            currentSessionId = null;
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('authView').classList.remove('hidden');
+            const streamFeed = document.getElementById('streamFeed');
+            if (streamFeed) streamFeed.src = "";
             switchTab('dashboard');
+            alert("အောင်မြင်စွာ ထွက်ပြီးပါပြီ။ ကားကို အခြားသူများ ပြန်လည်အသုံးပြုနိုင်ပါပြီ။");
         }
+
+        window.addEventListener("beforeunload", function (e) {
+            if (currentSessionId) {
+                const blob = new Blob([JSON.stringify({ session_id: currentSessionId })], { type: 'application/json' });
+                navigator.sendBeacon('/api/logout', blob);
+            }
+        });
 
         function switchTab(tabName) {
             const links = document.querySelectorAll('.nav-link');
@@ -954,6 +1051,43 @@
             }
         });
 
+        // ================= Mobile Phone Touch Controls =================
+        function initMobileTouchControls() {
+            const touchMappings = [
+                { id: 'btnForward', cmd: 'FORWARD' },
+                { id: 'btnBackward', cmd: 'REVERSE' },
+                { id: 'btnLeft', cmd: 'LEFT' },
+                { id: 'btnRight', cmd: 'RIGHT' },
+                { id: 'btnStop', cmd: 'STOP' }
+            ];
+
+            touchMappings.forEach(({ id, cmd }) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    btn.classList.add('active');
+                    triggerCmd(cmd);
+                }, { passive: false });
+
+                if (cmd !== 'STOP') {
+                    const releaseStop = (e) => {
+                        e.preventDefault();
+                        btn.classList.remove('active');
+                        triggerCmd('STOP');
+                    };
+                    btn.addEventListener('touchend', releaseStop, { passive: false });
+                    btn.addEventListener('touchcancel', releaseStop, { passive: false });
+                } else {
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        btn.classList.remove('active');
+                    }, { passive: false });
+                }
+            });
+        }
+
         // ================= Servo Pan Control =================
         let servoDebounceTimer = null;
 
@@ -982,6 +1116,253 @@
             }, 40);
         }
 
+        // ================= Camera Orientation & Rotation =================
+        let currentRotation = 90; // Default: 90 degrees (Vertical / Portrait View)
+
+        async function syncCameraOrientation() {
+            try {
+                const res = await fetch('/api/camera/rotation');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.rotation !== undefined) {
+                        applyCameraOrientationUI(data.rotation);
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not fetch camera rotation:", e);
+            }
+        }
+
+        function applyCameraOrientationUI(deg) {
+            currentRotation = deg;
+            const container = document.getElementById('videoContainer');
+            const iconEl = document.getElementById('orientationIcon');
+            const textEl = document.getElementById('orientationText');
+
+            const isVertical = (currentRotation === 90 || currentRotation === 270);
+            if (container) {
+                if (isVertical) {
+                    container.classList.add('vertical-mode');
+                } else {
+                    container.classList.remove('vertical-mode');
+                }
+            }
+
+            if (textEl) {
+                textEl.innerText = isVertical ? `Vertical (${currentRotation}°)` : `Horizontal (${currentRotation}°)`;
+            }
+            if (iconEl) {
+                iconEl.innerText = isVertical ? '📱' : '🖥️';
+            }
+
+            // Adjust recording canvas dimensions if it exists
+            if (recordCanvas) {
+                recordCanvas.width = isVertical ? 480 : 640;
+                recordCanvas.height = isVertical ? 640 : 480;
+            }
+        }
+
+        async function setCameraRotation(deg) {
+            try {
+                applyCameraOrientationUI(deg);
+                const res = await fetch('/api/camera/rotation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rotation: deg })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    applyCameraOrientationUI(data.rotation);
+                }
+            } catch (err) {
+                console.error("Camera rotation update error:", err);
+            }
+        }
+
+        function toggleCameraOrientation() {
+            // Toggles between 90 (Vertical Portrait) and 0 (Horizontal Landscape)
+            if (currentRotation === 90 || currentRotation === 270) {
+                setCameraRotation(0);
+            } else {
+                setCameraRotation(90);
+            }
+        }
+
+        function rotateCameraStep(step = 90) {
+            const nextRot = (currentRotation + step) % 360;
+            setCameraRotation(nextRot);
+        }
+
+        // ================= Video Recording & Auto-Download (10 Min Max) =================
+        let isRecording = false;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordTimerInterval = null;
+        let recordSeconds = 0;
+        const MAX_RECORD_SECONDS = 600; // 10 minutes maximum
+        let recordCanvas = null;
+        let recordAnimId = null;
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            const img = document.getElementById('streamFeed');
+            if (!img) {
+                alert("Camera feed not ready.");
+                return;
+            }
+
+            try {
+                if (!recordCanvas) {
+                    recordCanvas = document.createElement('canvas');
+                }
+                const isVertical = (currentRotation === 90 || currentRotation === 270);
+                recordCanvas.width = isVertical ? 480 : 640;
+                recordCanvas.height = isVertical ? 640 : 480;
+                const ctx = recordCanvas.getContext('2d');
+
+                isRecording = true;
+                recordedChunks = [];
+                recordSeconds = 0;
+
+                // Frame capture loop
+                function drawFrame() {
+                    if (!isRecording) return;
+                    try {
+                        if (img.complete && img.naturalWidth !== 0) {
+                            ctx.drawImage(img, 0, 0, recordCanvas.width, recordCanvas.height);
+                        }
+                    } catch (err) {}
+                    recordAnimId = requestAnimationFrame(drawFrame);
+                }
+
+                // Initial draw
+                try {
+                    ctx.drawImage(img, 0, 0, recordCanvas.width, recordCanvas.height);
+                } catch (e) {}
+
+                // Capture stream from canvas at 25 FPS
+                const stream = recordCanvas.captureStream(25);
+
+                let options = { mimeType: 'video/webm;codecs=vp8' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm' };
+                }
+
+                mediaRecorder = new MediaRecorder(stream, options);
+
+                mediaRecorder.ondataavailable = function(e) {
+                    if (e.data && e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = function() {
+                    finalizeRecording();
+                };
+
+                mediaRecorder.start(1000);
+                recordAnimId = requestAnimationFrame(drawFrame);
+
+                // Update UI to Recording state
+                updateRecTimerUI();
+                document.getElementById('recordingStatus').style.display = 'flex';
+                const recBtn = document.getElementById('recordBtn');
+                recBtn.classList.remove('btn-danger');
+                recBtn.classList.add('btn-outline');
+                document.getElementById('recordBtnText').innerText = 'Stop & Download';
+                document.getElementById('recDot').style.background = 'var(--danger)';
+
+                // Start 10-minute timer
+                clearInterval(recordTimerInterval);
+                recordTimerInterval = setInterval(() => {
+                    recordSeconds++;
+                    updateRecTimerUI();
+                    if (recordSeconds >= MAX_RECORD_SECONDS) {
+                        stopRecording();
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error("Recording init error:", err);
+                alert("Could not start video recording: " + err.message);
+                isRecording = false;
+            }
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            isRecording = false;
+            clearInterval(recordTimerInterval);
+            if (recordAnimId) cancelAnimationFrame(recordAnimId);
+
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            // Reset UI
+            document.getElementById('recordingStatus').style.display = 'none';
+            const recBtn = document.getElementById('recordBtn');
+            recBtn.classList.add('btn-danger');
+            recBtn.classList.remove('btn-outline');
+            document.getElementById('recordBtnText').innerText = 'Record Video';
+            document.getElementById('recDot').style.background = '#fff';
+        }
+
+        function updateRecTimerUI() {
+            const mins = Math.floor(recordSeconds / 60).toString().padStart(2, '0');
+            const secs = (recordSeconds % 60).toString().padStart(2, '0');
+            const timerEl = document.getElementById('recTimerText');
+            if (timerEl) {
+                timerEl.innerText = `${mins}:${secs} / 10:00`;
+            }
+        }
+
+        async function finalizeRecording() {
+            if (recordedChunks.length === 0) {
+                console.warn("No video frames recorded.");
+                return;
+            }
+
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const now = new Date();
+            const pad = (n) => n.toString().padStart(2, '0');
+            const timestamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+            const downloadFilename = `rover_record_${timestamp}.webm`;
+
+            // 1. Trigger Automatic Browser Download to user's computer
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = downloadFilename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }, 1000);
+
+            // 2. Upload to server's records directory & database
+            try {
+                const uploadUrl = currentSessionId ? `/api/records/upload?session_id=${currentSessionId}` : '/api/records/upload';
+                await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'video/webm' },
+                    body: blob
+                });
+                fetchVideos();
+            } catch (err) {
+                console.error("Server video archive error:", err);
+            }
+        }
+
         async function fetchVideos() {
             const listEl = document.getElementById('videoList');
             if (!listEl) return;
@@ -991,8 +1372,11 @@
                 if (data.videos && data.videos.length > 0) {
                     listEl.innerHTML = data.videos.map(v => `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-                            <span>📹 ${v}</span>
-                            <a href="/records/${v}" target="_blank" style="color:var(--primary); font-size:0.8rem; text-decoration:none;">View</a>
+                            <span style="font-size:0.85rem;">📹 ${v}</span>
+                            <div style="display:flex; gap:10px;">
+                                <a href="/records/${v}" target="_blank" style="color:var(--primary); font-size:0.8rem; text-decoration:none; font-weight:700;">View</a>
+                                <a href="/records/${v}" download="${v}" style="color:var(--success); font-size:0.8rem; text-decoration:none; font-weight:700;">Download</a>
+                            </div>
                         </div>
                     `).join('');
                 } else {
@@ -1002,6 +1386,10 @@
                 listEl.textContent = 'Could not load video history.';
             }
         }
+
+        // Initialize orientation and mobile controls on page load
+        syncCameraOrientation();
+        initMobileTouchControls();
     </script>
 </body>
 </html>

@@ -23,7 +23,7 @@ from backend import Base, User, Car, DATABASE_URL, datetime
 DEFAULT_USERNAME     = "admin"
 DEFAULT_PASSWORD     = "SecurePass@123"   # Will be hashed with bcrypt
 DEFAULT_CAR_NAME     = "Rover 1"
-DEFAULT_CAR_WIFI_PW  = "123456"  # This is the 3rd login factor
+DEFAULT_CAR_WIFI_PW  = "1001"  # This is the 3rd login factor (must be between 1000 and 1010)
 
 # ─────────────────────────────────────────────────────────────────────────────
 

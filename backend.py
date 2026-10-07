@@ -7,7 +7,7 @@ import time
 
 import bcrypt
 import cv2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -166,12 +166,17 @@ async def serve_ui():
 class RegisterPayload(BaseModel):
     username: str
     password: str
+    car_wifi: int = Field(..., ge=1000, le=1010)
 
 
 class LoginPayload(BaseModel):
     username: str
     password: str
-    car_wifi: str
+    car_wifi: int = Field(..., ge=1000, le=1010)
+
+
+class LogoutPayload(BaseModel):
+    session_id: int
 
 
 class ConnectionConfig(BaseModel):
@@ -195,6 +200,10 @@ class ActionPayload(BaseModel):
     action: str
 
 
+class RotationPayload(BaseModel):
+    rotation: int  # 0, 90, 180, 270
+
+
 class SystemState:
 
     def __init__(self):
@@ -203,6 +212,7 @@ class SystemState:
         self.connected = True
         self.servo_angle = 90
         self.current_direction = "stop"
+        self.rotation = 90  # Default to 90 degrees (Vertical Portrait View)
         self.logs = []
 
 
@@ -233,52 +243,40 @@ def test_esp32_control(ip: str) -> bool:
 
 
 def get_demo_frame(t_sec):
-    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    if state.rotation in [90, 270]:
+        w, h = 480, 640
+    else:
+        w, h = 640, 480
+    frame = np.zeros((h, w, 3), dtype=np.uint8)
     frame[:] = [30, 20, 15]
 
     grid_size = 40
-    for x in range(0, 640, grid_size):
-        cv2.line(frame, (x, 0), (x, 480), (50, 35, 25), 1)
-    for y in range(0, 480, grid_size):
-        cv2.line(frame, (0, y), (640, y), (50, 35, 25), 1)
+    for x in range(0, w, grid_size):
+        cv2.line(frame, (x, 0), (x, h), (50, 35, 25), 1)
+    for y in range(0, h, grid_size):
+        cv2.line(frame, (0, y), (w, y), (50, 35, 25), 1)
 
-    center = (320, 240)
-    for r in [80, 160, 240]:
+    center = (w // 2, h // 2)
+    for r in [60, 120, 180]:
         cv2.circle(frame, center, r, (70, 50, 35), 1)
 
     sweep_angle = t_sec * 2.0
-    sx = int(320 + 240 * math.cos(sweep_angle))
-    sy = int(240 + 240 * math.sin(sweep_angle))
+    sx = int(center[0] + 180 * math.cos(sweep_angle))
+    sy = int(center[1] + 180 * math.sin(sweep_angle))
     cv2.line(frame, center, (sx, sy), (150, 100, 30), 1)
 
-    t1_x = int(320 + 140 * math.cos(t_sec * 0.4))
-    t1_y = int(240 + 90 * math.sin(t_sec * 0.3))
+    t1_x = int(center[0] + 100 * math.cos(t_sec * 0.4))
+    t1_y = int(center[1] + 80 * math.sin(t_sec * 0.3))
     cv2.rectangle(
-        frame, (t1_x - 30, t1_y - 45), (t1_x + 30, t1_y + 45), (0, 0, 220), 2
+        frame, (t1_x - 25, t1_y - 35), (t1_x + 25, t1_y + 35), (0, 0, 220), 2
     )
     cv2.putText(
         frame,
         "TARGET: INTRUDER (94%)",
-        (t1_x - 30, t1_y - 52),
+        (max(10, t1_x - 30), t1_y - 42),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.45,
+        0.4,
         (0, 0, 220),
-        1,
-        cv2.LINE_AA,
-    )
-
-    t2_x = int(320 + 160 * math.cos(t_sec * 0.2 + 2.0))
-    t2_y = int(240 + 120 * math.sin(t_sec * 0.25 + 1.0))
-    cv2.rectangle(
-        frame, (t2_x - 25, t2_y - 25), (t2_x + 25, t2_y + 25), (0, 200, 0), 2
-    )
-    cv2.putText(
-        frame,
-        "TARGET: PET (98%)",
-        (t2_x - 25, t2_y - 32),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.45,
-        (0, 200, 0),
         1,
         cv2.LINE_AA,
     )
@@ -288,7 +286,7 @@ def get_demo_frame(t_sec):
         "SYS_STATUS: ACTIVE",
         (20, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.48,
         (0, 255, 255),
         1,
         cv2.LINE_AA,
@@ -298,61 +296,63 @@ def get_demo_frame(t_sec):
         f"SERVO PAN: {state.servo_angle} DEG",
         (20, 50),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.48,
         (0, 255, 255),
         1,
         cv2.LINE_AA,
     )
     cv2.putText(
         frame,
-        f"DRIVE DIRECTION: {state.current_direction.upper()}",
+        f"DRIVE: {state.current_direction.upper()}",
         (20, 70),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.48,
         (0, 255, 255),
         1,
         cv2.LINE_AA,
     )
 
+    right_x = max(10, w - 190)
     cv2.putText(
         frame,
-        "STREAM_MODE: SIMULATION",
-        (400, 30),
+        "MODE: SIMULATION",
+        (right_x, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.42,
         (0, 180, 255),
         1,
         cv2.LINE_AA,
     )
-    cur_time = time.strftime("%Y-%m-%d %H:%M:%S")
+    cur_time = time.strftime("%H:%M:%S")
     cv2.putText(
         frame,
         cur_time,
-        (400, 50),
+        (right_x, 50),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.42,
         (0, 180, 255),
         1,
         cv2.LINE_AA,
     )
 
+    center_x = max(10, (w // 2) - 100)
     cv2.putText(
         frame,
         "SMART GUARDX SECURE VIEW",
-        (210, 450),
+        (center_x, h - 20),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.45,
         (0, 200, 255),
         1,
         cv2.LINE_AA,
     )
 
     if int(t_sec * 2) % 2 == 0:
-        cv2.circle(frame, (600, 25), 6, (0, 0, 255), -1)
+        cv2.circle(frame, (w - 25, 25), 6, (0, 0, 255), -1)
         cv2.putText(
             frame,
             "REC",
-            (560, 30),
+            (w - 60, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,
             (0, 0, 255),
@@ -364,7 +364,19 @@ def get_demo_frame(t_sec):
 
 
 def process_webcam_frame(frame, t_sec):
-    frame = cv2.resize(frame, (640, 480))
+    if state.rotation == 90:
+        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    elif state.rotation == 180:
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
+    elif state.rotation == 270:
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+    if state.rotation in [90, 270]:
+        frame = cv2.resize(frame, (480, 640))
+    else:
+        frame = cv2.resize(frame, (640, 480))
+
+    h, w = frame.shape[:2]
 
     cv2.putText(
         frame,
@@ -397,45 +409,47 @@ def process_webcam_frame(frame, t_sec):
         cv2.LINE_AA,
     )
 
+    right_x = max(10, w - 210)
     cv2.putText(
         frame,
-        "STREAM_MODE: LOCAL WEBCAM",
-        (410, 30),
+        "MODE: LOCAL WEBCAM",
+        (right_x, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.45,
         (0, 255, 0),
         1,
         cv2.LINE_AA,
     )
-    cur_time = time.strftime("%Y-%m-%d %H:%M:%S")
+    cur_time = time.strftime("%H:%M:%S")
     cv2.putText(
         frame,
         cur_time,
-        (410, 50),
+        (right_x, 50),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.45,
         (0, 255, 0),
         1,
         cv2.LINE_AA,
     )
 
+    center_x = max(10, (w // 2) - 100)
     cv2.putText(
         frame,
         "SMART GUARDX WEBCAM VIEW",
-        (210, 450),
+        (center_x, h - 20),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
+        0.45,
         (0, 255, 0),
         1,
         cv2.LINE_AA,
     )
 
     if int(t_sec * 2) % 2 == 0:
-        cv2.circle(frame, (600, 25), 6, (0, 0, 255), -1)
+        cv2.circle(frame, (w - 25, 25), 6, (0, 0, 255), -1)
         cv2.putText(
             frame,
             "REC",
-            (560, 30),
+            (w - 60, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,
             (0, 0, 255),
@@ -492,7 +506,20 @@ def process_esp32_frame(jpg_bytes, t_sec):
         )
         if frame is None:
             return jpg_bytes
-        frame = cv2.resize(frame, (640, 480))
+
+        if state.rotation == 90:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        elif state.rotation == 180:
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
+        elif state.rotation == 270:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+        if state.rotation in [90, 270]:
+            frame = cv2.resize(frame, (480, 640))
+        else:
+            frame = cv2.resize(frame, (640, 480))
+
+        h, w = frame.shape[:2]
 
         cv2.putText(
             frame,
@@ -516,7 +543,7 @@ def process_esp32_frame(jpg_bytes, t_sec):
         )
         cv2.putText(
             frame,
-            f"DRIVE DIRECTION: {state.current_direction.upper()}",
+            f"DRIVE: {state.current_direction.upper()}",
             (20, 70),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -525,45 +552,47 @@ def process_esp32_frame(jpg_bytes, t_sec):
             cv2.LINE_AA,
         )
 
+        right_x = max(10, w - 200)
         cv2.putText(
             frame,
-            f"ESP32-CAM: {state.esp32_ip}",
-            (420, 30),
+            f"ESP32: {state.esp32_ip}",
+            (right_x, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.45,
             (0, 255, 255),
             1,
             cv2.LINE_AA,
         )
-        cur_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        cur_time = time.strftime("%H:%M:%S")
         cv2.putText(
             frame,
             cur_time,
-            (420, 50),
+            (right_x, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.45,
             (0, 255, 255),
             1,
             cv2.LINE_AA,
         )
 
+        center_x = max(10, (w // 2) - 100)
         cv2.putText(
             frame,
             "SMART GUARDX REMOTE VIEW",
-            (210, 450),
+            (center_x, h - 20),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.45,
             (0, 255, 255),
             1,
             cv2.LINE_AA,
         )
 
         if int(t_sec * 2) % 2 == 0:
-            cv2.circle(frame, (600, 25), 6, (0, 0, 255), -1)
+            cv2.circle(frame, (w - 25, 25), 6, (0, 0, 255), -1)
             cv2.putText(
                 frame,
                 "REC",
-                (560, 30),
+                (w - 60, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.4,
                 (0, 0, 255),
@@ -647,11 +676,18 @@ def event_generator():
                             )
                         else:
                             state.connected = False
-                            state.mode = "demo"
+                            jpg = get_demo_frame(t_sec)
+                            yield (
+                                b"--frame\r\n"
+                                b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
+                            )
                     except Exception as e:
-                        add_log(f"Error fetching frame from ESP32: {str(e)}")
                         state.connected = False
-                        state.mode = "demo"
+                        jpg = get_demo_frame(t_sec)
+                        yield (
+                            b"--frame\r\n"
+                            b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
+                        )
                     time.sleep(0.05)
 
             except Exception as e:
@@ -674,39 +710,30 @@ def get_status():
     }
 
 
-@app.post("/api/logout/{session_id}")
-def logout(session_id: int):
+@app.post("/api/logout")
+def logout_json(payload: LogoutPayload):
     db = SessionLocal()
-
     try:
-        session = db.query(Session).filter(Session.id == session_id).first()
-
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-
-        if session.status != "active":
-            return {"success": True, "message": "Session already closed."}
-
-        now = get_utc_now()
-        session.disconnected_at = now
-        session.status = "completed"
-
-        if session.connected_at:
-            conn_time = session.connected_at
-            if conn_time.tzinfo is None:
-                conn_time = conn_time.replace(tzinfo=timezone.utc)
-            session.duration_seconds = int((now - conn_time).total_seconds())
-
-        db.commit()
-
-        return {
-            "success": True,
-            "session_id": session.id,
-            "duration_seconds": session.duration_seconds,
-        }
-
+        session = db.query(Session).filter(Session.id == payload.session_id).first()
+        if session:
+            now = get_utc_now()
+            session.disconnected_at = now
+            session.status = "terminated"
+            if session.connected_at:
+                conn_time = session.connected_at
+                if conn_time.tzinfo is None:
+                    conn_time = conn_time.replace(tzinfo=timezone.utc)
+                session.duration_seconds = int((now - conn_time).total_seconds())
+            db.commit()
+            add_log(f"Session {payload.session_id} terminated and car lock released.")
+        return {"success": True, "message": "Logged out successfully."}
     finally:
         db.close()
+
+
+@app.post("/api/logout/{session_id}")
+def logout(session_id: int):
+    return logout_json(LogoutPayload(session_id=session_id))
 
 
 @app.post("/api/connect")
@@ -754,7 +781,7 @@ def move(payload: MovePayload):
     state.current_direction = direction
     add_log(f"Motor direction set to: {direction.upper()}")
 
-    if state.mode == "esp32" and state.esp32_ip:
+    if state.esp32_ip:
         command_map = {
             "forward": "F",
             "backward": "B",
@@ -791,7 +818,7 @@ async def control_pan(data: PanRequest):
     add_log(f"Camera Pan set to: {angle} degrees")
     print(f"[SERVO] Camera Panned to: {angle}°")
 
-    if state.mode == "esp32" and state.esp32_ip:
+    if state.esp32_ip:
         esp32_url = f"http://{state.esp32_ip}/pan?angle={angle}"
         try:
             res = requests.get(esp32_url, timeout=1.5)
@@ -826,40 +853,58 @@ def register(payload: RegisterPayload):
         if not payload.password:
             raise HTTPException(status_code=400, detail="Password cannot be empty")
 
+        # 1. Username duplicate check
         existing_user = (
             db.query(User).filter(User.username == username).first()
         )
         if existing_user:
             raise HTTPException(
-                status_code=400, detail="Username already exists"
+                status_code=400,
+                detail="Username already exists. Please choose another.",
             )
 
+        # 2. Car Wi-Fi Key duplicate check (1000 - 1010)
+        existing_car = (
+            db.query(Car)
+            .filter(Car.wifi_password == str(payload.car_wifi))
+            .first()
+        )
+        if existing_car:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Car Wi-Fi Key '{payload.car_wifi}' is already registered."
+                    " Please use a different key."
+                ),
+            )
+
+        # 3. Create new user
         new_user = User(
             username=username,
             password_hash=get_password_hash(payload.password),
         )
         db.add(new_user)
-        db.flush()
+        db.flush()  # get new_user.id
 
-        # Link default car with default WiFi password ("123456")
-        car = Car(
+        # 4. Link car with chosen Wi-Fi key (1000 - 1010)
+        new_car = Car(
             car_name=f"{username}'s Rover",
-            wifi_password="123456",
+            wifi_password=str(payload.car_wifi),
             owner_id=new_user.id,
         )
-        db.add(car)
+        db.add(new_car)
         db.commit()
 
         add_log(
-            f"New user registered: '{new_user.username}' with default car WiFi"
-            " key (123456)"
+            f"New user registered: '{new_user.username}' with car WiFi"
+            f" key ({payload.car_wifi})"
         )
         return {
             "success": True,
-            "message": "Account created successfully.",
+            "message": "Account and Rover registered successfully.",
             "username": new_user.username,
-            "car_name": car.car_name,
-            "car_wifi": "123456",
+            "car_name": new_car.car_name,
+            "car_wifi": payload.car_wifi,
         }
     finally:
         db.close()
@@ -882,13 +927,39 @@ def login(payload: LoginPayload):
                 status_code=401, detail="ACCESS DENIED: Incorrect password."
             )
 
-        car = db.query(Car).filter(Car.wifi_password == payload.car_wifi).first()
+        wifi_key_str = str(payload.car_wifi)
+        # Check car belonging to user first, then fallback to any matching car
+        car = (
+            db.query(Car)
+            .filter(Car.owner_id == user.id, Car.wifi_password == wifi_key_str)
+            .first()
+        )
+        if not car:
+            car = db.query(Car).filter(Car.wifi_password == wifi_key_str).first()
 
         if not car:
             raise HTTPException(
                 status_code=401,
                 detail="ACCESS DENIED: Incorrect Car Wi-Fi Password.",
             )
+
+        # Single Driver Lock: Check if another user is actively using the rover
+        active_session = (
+            db.query(Session)
+            .filter(Session.status == "active")
+            .first()
+        )
+
+        if active_session:
+            if active_session.user_id == user.id:
+                # Same user re-connecting: release previous session to avoid locking themselves out
+                active_session.status = "terminated"
+                db.commit()
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail="ROVER IS BUSY: သင့်သူငယ်ချင်း (သို့) အခြားသူတစ်ဦး လက်ရှိအသုံးပြုနေပါသည်။ ပြီးသည်အထိ ခဏစောင့်ပါ။",
+                )
 
         session = Session(user_id=user.id, car_id=car.id)
 
@@ -928,6 +999,56 @@ def list_videos():
             status_code=500,
             detail=f"Could not read records directory: {str(e)}",
         )
+
+
+@app.post("/api/records/upload")
+async def upload_record(request: Request, session_id: int | None = None):
+    try:
+        content = await request.body()
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty video data")
+
+        filename = f"rover_record_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
+        file_path = RECORDS_DIR / filename
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        db = SessionLocal()
+        try:
+            car_id = 1
+            if session_id:
+                s = db.query(Session).filter(Session.id == session_id).first()
+                if s:
+                    car_id = s.car_id
+            video = Video(filename=filename, filepath=str(file_path), car_id=car_id)
+            db.add(video)
+            db.commit()
+        finally:
+            db.close()
+
+        add_log(f"New video recording saved: {filename} ({len(content)} bytes)")
+        return {"success": True, "filename": filename, "url": f"/records/{filename}"}
+    except Exception as e:
+        add_log(f"Error saving video upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/camera/rotation")
+def get_camera_rotation():
+    return {"rotation": state.rotation}
+
+
+@app.post("/api/camera/rotation")
+def set_camera_rotation(payload: RotationPayload):
+    if payload.rotation not in [0, 90, 180, 270]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid rotation angle. Must be 0, 90, 180, or 270.",
+        )
+    state.rotation = payload.rotation
+    orientation = "Vertical" if state.rotation in [90, 270] else "Horizontal"
+    add_log(f"Camera rotation set to {state.rotation}° ({orientation} view)")
+    return {"success": True, "rotation": state.rotation, "orientation": orientation}
 
 
 if __name__ == "__main__":

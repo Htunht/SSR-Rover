@@ -70,7 +70,7 @@ Open **http://127.0.0.1:8000/** in your web browser.
 | :--- | :--- |
 | **Username** | `admin` |
 | **Passcode** | `SecurePass@123` |
-| **Car Wi-Fi Password** | `123456` |
+| **Car Wi-Fi Password** | `1001` (Allowed Range: 1000 – 1010) |
 
 ---
 
