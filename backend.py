@@ -130,6 +130,19 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         print("[DB] Tables created / verified OK.")
+        # Auto-terminate orphaned active sessions from previous server runs
+        db = SessionLocal()
+        try:
+            orphaned = db.query(Session).filter(Session.status == "active").all()
+            if orphaned:
+                now = get_utc_now()
+                for s in orphaned:
+                    s.status = "terminated"
+                    s.disconnected_at = now
+                db.commit()
+                print(f"[DB] Auto-closed {len(orphaned)} orphaned session(s) on startup.")
+        finally:
+            db.close()
     except Exception as e:
         print(f"[DB] WARNING: Could not connect to database: {e}")
     yield
@@ -177,6 +190,15 @@ class LoginPayload(BaseModel):
 
 class LogoutPayload(BaseModel):
     session_id: int
+
+
+class ProfileUpdatePayload(BaseModel):
+    session_id: int
+    username: str | None = None
+    password: str | None = None
+    current_password: str | None = None
+    new_username: str | None = None
+    new_password: str | None = None
 
 
 class ConnectionConfig(BaseModel):
@@ -913,56 +935,66 @@ def register(payload: RegisterPayload):
 @app.post("/api/login")
 def login(payload: LoginPayload):
     db = SessionLocal()
-
     try:
         user = db.query(User).filter(User.username == payload.username).first()
-
         if not user:
-            raise HTTPException(
-                status_code=401, detail="ACCESS DENIED: User not found."
-            )
+            raise HTTPException(status_code=401, detail="ACCESS DENIED: User not found.")
 
         if not verify_password(payload.password, user.password_hash):
-            raise HTTPException(
-                status_code=401, detail="ACCESS DENIED: Incorrect password."
-            )
+            raise HTTPException(status_code=401, detail="ACCESS DENIED: Incorrect password.")
 
+        # STRICT SECURITY: သက်ဆိုင်ရာ User ပိုင်ဆိုင်တဲ့ ကား ဟုတ်/မဟုတ် တိတိကျကျ စစ်ဆေးခြင်း
         wifi_key_str = str(payload.car_wifi)
-        # Check car belonging to user first, then fallback to any matching car
         car = (
             db.query(Car)
             .filter(Car.owner_id == user.id, Car.wifi_password == wifi_key_str)
             .first()
         )
-        if not car:
-            car = db.query(Car).filter(Car.wifi_password == wifi_key_str).first()
 
         if not car:
+            # မိမိပိုင် ကားမဟုတ်ပါက (သို့မဟုတ်) Key မှားနေပါက ချက်ချင်း ငြင်းပယ်မည်
             raise HTTPException(
                 status_code=401,
-                detail="ACCESS DENIED: Incorrect Car Wi-Fi Password.",
+                detail="ACCESS DENIED: သင့်အကောင့်နှင့် ချိတ်ဆက်ထားသော Car Wi-Fi Key မဟုတ်ပါ။ အခြားသူ၏ ကားကို ဝင်ရောက်ခွင့် မပြုပါ။"
             )
 
-        # Single Driver Lock: Check if another user is actively using the rover
-        active_session = (
+        # ====================================================================
+        # Single Driver Lock: တခြားလူ ဝင်သုံးနေခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+        active_sessions = (
             db.query(Session)
-            .filter(Session.status == "active")
-            .first()
+            .filter(Session.car_id == car.id, Session.status == "active")
+            .all()
         )
 
-        if active_session:
+        for active_session in active_sessions:
             if active_session.user_id == user.id:
-                # Same user re-connecting: release previous session to avoid locking themselves out
+                # Same user logging back in: terminate stale/prior session cleanly
+                now = get_utc_now()
                 active_session.status = "terminated"
+                active_session.disconnected_at = now
+                if active_session.connected_at:
+                    try:
+                        conn_time = active_session.connected_at
+                        if conn_time.tzinfo is None:
+                            conn_time = conn_time.replace(tzinfo=timezone.utc)
+                        active_session.duration_seconds = int(
+                            (now - conn_time).total_seconds()
+                        )
+                    except Exception:
+                        pass
                 db.commit()
+                add_log(
+                    f"Prior session {active_session.id} for user '{user.username}' auto-closed on re-login."
+                )
             else:
+                # Another user is genuinely using this car
                 raise HTTPException(
                     status_code=403,
-                    detail="ROVER IS BUSY: သင့်သူငယ်ချင်း (သို့) အခြားသူတစ်ဦး လက်ရှိအသုံးပြုနေပါသည်။ ပြီးသည်အထိ ခဏစောင့်ပါ။",
+                    detail="ROVER IS BUSY: ဤကားကို လက်ရှိ အခြားသူတစ်ဦး အသုံးပြုနေပါသည်။ ပြီးသည်အထိ ခဏစောင့်ပါ။",
                 )
+        # ====================================================================
 
         session = Session(user_id=user.id, car_id=car.id)
-
         db.add(session)
         db.commit()
         db.refresh(session)
@@ -978,27 +1010,173 @@ def login(payload: LoginPayload):
             "car_connected": car.car_name,
             "session_id": session.id,
         }
+    finally:
+        db.close()
 
+
+@app.get("/api/session/verify")
+def verify_session(session_id: int):
+    db = SessionLocal()
+    try:
+        session = (
+            db.query(Session)
+            .filter(Session.id == session_id, Session.status == "active")
+            .first()
+        )
+        if not session:
+            return {"valid": False}
+
+        user = db.query(User).filter(User.id == session.user_id).first()
+        car = db.query(Car).filter(Car.id == session.car_id).first()
+        if user and car:
+            desired_car_name = f"{user.username}'s Rover"
+            if car.car_name != desired_car_name:
+                car.car_name = desired_car_name
+                db.commit()
+        return {
+            "valid": True,
+            "session_id": session.id,
+            "username": user.username if user else "Operator",
+            "car_connected": car.car_name if car else (f"{user.username}'s Rover" if user else "Rover"),
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/profile/update")
+def update_profile(payload: ProfileUpdatePayload):
+    db = SessionLocal()
+    try:
+        session = (
+            db.query(Session)
+            .filter(Session.id == payload.session_id, Session.status == "active")
+            .first()
+        )
+        if not session:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or expired session. Please log in again.",
+            )
+
+        user = db.query(User).filter(User.id == session.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # Optional check: if current_password was supplied, verify it
+        if payload.current_password and not verify_password(
+            payload.current_password, user.password_hash
+        ):
+            raise HTTPException(
+                status_code=400, detail="Current password is incorrect."
+            )
+
+        updated_username = False
+        target_username = (payload.username or payload.new_username or "").strip()
+        if target_username and target_username != user.username:
+            existing = (
+                db.query(User)
+                .filter(User.username == target_username, User.id != user.id)
+                .first()
+            )
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Username already taken. Please choose another.",
+                )
+            user.username = target_username
+            updated_username = True
+
+        updated_password = False
+        target_password = (payload.password or payload.new_password or "").strip()
+        if target_password:
+            if len(target_password) < 4:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Password must be at least 4 characters long.",
+                )
+            # Only update if different
+            if not verify_password(target_password, user.password_hash):
+                user.password_hash = get_password_hash(target_password)
+                updated_password = True
+
+        # Always synchronize the car name to {user.username}'s Rover
+        desired_car_name = f"{user.username}'s Rover"
+        updated_car = False
+
+        car = db.query(Car).filter(Car.id == session.car_id).first()
+        if not car:
+            car = db.query(Car).filter(Car.owner_id == user.id).first()
+
+        if car and car.car_name != desired_car_name:
+            car.car_name = desired_car_name
+            updated_car = True
+
+        if user.cars:
+            for c in user.cars:
+                if c.car_name != desired_car_name:
+                    c.car_name = desired_car_name
+                    updated_car = True
+
+        car_name = car.car_name if car else desired_car_name
+
+        if not updated_username and not updated_password and not updated_car:
+            return {
+                "success": True,
+                "message": "Profile is up to date.",
+                "username": user.username,
+                "car_connected": car_name,
+            }
+
+        db.commit()
+        db.refresh(user)
+
+        add_log(
+            f"User profile updated: user_id={user.id}, username='{user.username}', rover='{car_name}'"
+        )
+        return {
+            "success": True,
+            "message": "Profile updated successfully.",
+            "username": user.username,
+            "car_connected": car_name,
+        }
     finally:
         db.close()
 
 
 @app.get("/api/videos")
-def list_videos():
+def list_videos(session_id: int | None = None):
+    if not session_id:
+        return {"videos": [], "count": 0}
+
+    db = SessionLocal()
     try:
-        files = sorted(
-            [f for f in os.listdir(RECORDS_DIR) if f.lower().endswith(".webm")],
-            reverse=True,
+        session = db.query(Session).filter(Session.id == session_id).first()
+        if not session:
+            return {"videos": [], "count": 0}
+
+        # Retrieve all cars owned by this session's user
+        user_cars = db.query(Car).filter(Car.owner_id == session.user_id).all()
+        car_ids = [c.id for c in user_cars]
+        if session.car_id and session.car_id not in car_ids:
+            car_ids.append(session.car_id)
+
+        videos = (
+            db.query(Video)
+            .filter(Video.car_id.in_(car_ids))
+            .order_by(Video.recorded_at.desc(), Video.id.desc())
+            .all()
         )
-        add_log(f"Video list requested. Found {len(files)} recording(s).")
-        return {"videos": files}
+        files = [v.filename for v in videos]
+        add_log(f"Video list requested for user_id={session.user_id}. Found {len(files)} recording(s).")
+        return {"videos": files, "count": len(files)}
     except Exception as e:
         add_log(f"Error listing videos: {str(e)}")
-
         raise HTTPException(
             status_code=500,
             detail=f"Could not read records directory: {str(e)}",
         )
+    finally:
+        db.close()
 
 
 @app.post("/api/records/upload")
@@ -1008,26 +1186,36 @@ async def upload_record(request: Request, session_id: int | None = None):
         if not content:
             raise HTTPException(status_code=400, detail="Empty video data")
 
-        filename = f"rover_record_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
-        file_path = RECORDS_DIR / filename
-        with open(file_path, "wb") as f:
-            f.write(content)
-
         db = SessionLocal()
         try:
-            car_id = 1
+            car_id = None
             if session_id:
                 s = db.query(Session).filter(Session.id == session_id).first()
                 if s:
                     car_id = s.car_id
+
+            if not car_id:
+                active_s = (
+                    db.query(Session)
+                    .filter(Session.status == "active")
+                    .order_by(Session.id.desc())
+                    .first()
+                )
+                car_id = active_s.car_id if active_s else 1
+
+            filename = f"rover_record_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
+            file_path = RECORDS_DIR / filename
+            with open(file_path, "wb") as f:
+                f.write(content)
+
             video = Video(filename=filename, filepath=str(file_path), car_id=car_id)
             db.add(video)
             db.commit()
+
+            add_log(f"New video recording saved: {filename} ({len(content)} bytes) for car_id={car_id}")
+            return {"success": True, "filename": filename, "url": f"/records/{filename}"}
         finally:
             db.close()
-
-        add_log(f"New video recording saved: {filename} ({len(content)} bytes)")
-        return {"success": True, "filename": filename, "url": f"/records/{filename}"}
     except Exception as e:
         add_log(f"Error saving video upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

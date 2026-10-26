@@ -1,68 +1,28 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Dashboard</title>
+    <title>SSR-ROVER Dashboard</title>
     <style>
-        /* ================= Theme ================= */
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap');
-
+        /* 🎨 Clean White Dashboard Theme */
         :root {
-            --primary:          #D1951E; /* Warm Gold / Amber */
-            --primary-dark:     #b57d14;
-            --primary-light:    #e5a932;
-            --secondary:        #0a2a7b; /* Deep Royal Navy Blue */
-            --secondary-light:  #1344bb;
-            --danger:           #e74c3c;
-            --success:          #2ecc71;
-            --bg:               #040918;
-            --surface:          #091636;
-            --surface2:         #0f2456;
-            --border:           #1b3d82;
-            --text:             #e2eaf5;
-            --text-muted:       #7e95b7;
-            --font:             'Outfit', 'Segoe UI', system-ui, sans-serif;
-            --btn-text:         #040918;
-            --video-bg:         #000000;
-        }
-
-        /* ===== Light / White Theme ===== */
-        [data-theme="light"] {
-            --primary:          #D1951E;
-            --primary-dark:     #b57d14;
-            --primary-light:    #e5a932;
-            --secondary:        #0a2a7b;
-            --secondary-light:  #1344bb;
-            --danger:           #dc2626;
-            --success:          #16a34a;
-            --bg:               #f3f6fb;
-            --surface:          #ffffff;
-            --surface2:         #e8eef8;
-            --border:           #cbd5e1;
-            --text:             #0f172a;
-            --text-muted:       #64748b;
+            --bg-color:         #f4f7f6;       /* နောက်ခံအရောင် (မီးခိုးနုရောင်) */
+            --bg:               #f4f7f6;
+            --surface:          #ffffff;        /* ကတ်များ၏ အရောင် (အဖြူစစ်စစ်) */
+            --surface2:         #f8f9fa;       /* ခလုတ်နောက်ခံများ (အဖြူနု) */
+            --text-main:        #2c3e50;      /* အဓိက စာသားအရောင် (အနက်/ခဲရင့်) */
+            --text:             #2c3e50;
+            --text-muted:       #6c757d;     /* ရှင်းလင်းချက် စာသား (ခဲနုရောင်) */
+            --primary:          #007bff;        /* အဓိက အရောင် (Dashboard Blue) */
+            --primary-hover:    #0056b3;  /* ခလုတ်ဖိလျှင် ပြောင်းမည့် အပြာရင့် */
+            --primary-light:    #3395ff;
+            --border:           #e2e8f0;         /* အနားကွပ်မျဉ်းများ (မီးခိုးဖျော့) */
+            --danger:           #e74c3c;         /* အနီရောင် (Error/Stop) */
+            --success:          #2ecc71;        /* အစိမ်းရောင် (Success/Active) */
             --btn-text:         #ffffff;
             --video-bg:         #000000;
-        }
-
-        /* ===== Black & White High Contrast Theme ===== */
-        [data-theme="bw"] {
-            --primary:          #ffffff;
-            --primary-dark:     #d4d4d4;
-            --primary-light:    #ffffff;
-            --secondary:        #262626;
-            --secondary-light:  #404040;
-            --danger:           #ffffff;
-            --success:          #ffffff;
-            --bg:               #000000;
-            --surface:          #121212;
-            --surface2:         #222222;
-            --border:           #444444;
-            --text:             #ffffff;
-            --text-muted:       #a3a3a3;
-            --btn-text:         #000000;
-            --video-bg:         #000000;
+            --shadow:           0 4px 12px rgba(0, 0, 0, 0.05); /* အရိပ်ဖျော့ဖျော့ */
         }
 
         *, *::before, *::after { 
@@ -72,12 +32,29 @@
         }
 
         body {
-            font-family: var(--font);
-            background-color: var(--bg);
-            color: var(--text);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
             overflow-x: hidden;
             transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        /* 📦 Box ပုံစံများနှင့် အရိပ်များ (Cards & Surfaces) */
+        .auth-card, .container, .profile-card, .servo-panel {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+            color: var(--text-main);
+        }
+
+        h1, h2, h3 {
+            color: var(--text-main);
+            font-weight: 600;
         }
 
         /* ================= Auth Layout ================= */
@@ -108,16 +85,16 @@
 
         .brand-name {
             font-size: 1.6rem;
-            font-weight: 900;
+            font-weight: 800;
             letter-spacing: 2px;
-            color: var(--text);
+            color: var(--text-main);
             text-transform: uppercase;
         }
 
         .brand-sub {
-            font-size: 0.68rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             color: var(--primary);
             text-transform: uppercase;
         }
@@ -125,10 +102,6 @@
         .auth-card {
             width: 100%;
             max-width: 440px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 36px 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             animation: cardIn 0.4s ease-out;
         }
 
@@ -139,15 +112,15 @@
 
         .auth-card h1 {
             font-size: 1.6rem;
-            font-weight: 900;
-            letter-spacing: 2px;
+            font-weight: 700;
+            letter-spacing: 1px;
             color: var(--primary);
             text-align: center;
             margin-bottom: 6px;
         }
 
         .auth-subtitle {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             text-align: center;
             margin-bottom: 22px;
@@ -158,12 +131,12 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 2px;
+            font-size: 0.75rem;
+            font-weight: 600;
             color: var(--primary);
             background: var(--surface2);
             border: 1px solid var(--border);
+            border-radius: 20px;
             padding: 6px 14px;
             margin: 0 auto 24px;
         }
@@ -171,12 +144,13 @@
         .auth-badge-dot {
             width: 7px;
             height: 7px;
+            border-radius: 50%;
             background: var(--primary);
             animation: pulse-dot 1.5s ease-in-out infinite;
             flex-shrink: 0;
         }
 
-        /* ================= Inputs ================= */
+        /* 🔤 Input အကွက်များ (User-friendly Forms) */
         .input-group {
             margin-bottom: 16px;
             text-align: left;
@@ -184,67 +158,123 @@
 
         .input-label {
             display: block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 1.5px;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
             color: var(--text-muted);
-            margin-bottom: 7px;
-            text-transform: uppercase;
+            text-align: left;
+            font-weight: 500;
         }
 
         input {
             width: 100%;
-            padding: 13px 16px;
-            background: var(--bg);
+            padding: 12px 15px;
+            background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 8px;
-            color: var(--text);
-            font-family: var(--font);
-            font-size: 0.95rem;
-            outline: none;
-            transition: 0.25s;
+            color: var(--text-main);
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
         }
 
         input:focus {
+            outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(209, 149, 30, 0.25);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15); /* အပြာရောင် အရောင်လဲ့ */
         }
 
         input::placeholder { color: var(--text-muted); opacity: 0.7; }
 
-        /* ================= Buttons ================= */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 44px;
+        }
+
+        .eye-toggle-btn {
+            position: absolute;
+            right: 12px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: color 0.2s ease, transform 0.15s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .eye-toggle-btn:hover {
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .eye-toggle-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 🔘 ခလုတ်များ (Buttons) */
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 12px 24px;
-            font-family: var(--font);
-            font-size: 0.88rem;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            padding: 12px 20px;
             border: none;
             border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: 0.2s;
+            transition: all 0.3s ease;
             text-decoration: none;
             user-select: none;
         }
 
         .btn:active { transform: scale(0.97); }
 
-        .btn-primary { background: var(--primary); color: var(--btn-text); }
-        .btn-primary:hover { background: var(--primary-light); box-shadow: 0 6px 20px rgba(209, 149, 30, 0.4); }
-        
-        .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-        .btn-outline:hover { background: var(--surface2); color: var(--text); border-color: var(--primary); }
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
 
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-danger:hover { background: #b91c1c; }
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-outline {
+            background-color: var(--surface2);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-danger { background-color: var(--danger); color: #fff; }
+        .btn-danger:hover { background-color: #c0392b; transform: translateY(-1px); }
 
         .btn-full { width: 100%; margin-top: 8px; }
-        .btn-sm { padding: 7px 14px; font-size: 0.75rem; }
+        .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
+
+        /* 🎥 ကင်မရာ မျက်နှာပြင် (Video Stream) */
+        #streamFeed {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            background-color: #000;
+        }
 
         /* ================= Dashboard Layout ================= */
         .dashboard-layout {
@@ -263,15 +293,15 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--shadow);
         }
 
         .topnav-brand {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 800;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: var(--text);
+            color: var(--primary);
         }
 
         .topnav-links {
@@ -283,22 +313,22 @@
         .nav-link {
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.82rem;
-            font-weight: 700;
-            padding: 7px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 16px;
             border-radius: 6px;
             transition: 0.2s;
             border: 1px solid transparent;
         }
 
-        .nav-link:hover { color: var(--text); background: var(--surface2); }
+        .nav-link:hover { color: var(--text-main); background: var(--surface2); }
         .nav-link.active { color: var(--primary); background: var(--surface2); border-color: var(--border); }
 
         .nav-toggle-btn {
             display: none;
             background: var(--surface2);
             border: 1px solid var(--border);
-            color: var(--text);
+            color: var(--text-main);
             padding: 6px 12px;
             border-radius: 8px;
             cursor: pointer;
@@ -317,9 +347,9 @@
             max-width: 860px;
             background: var(--surface);
             padding: 32px;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow);
         }
 
         .profile-card {
@@ -329,10 +359,10 @@
 
         h2 {
             font-size: 1.6rem;
-            font-weight: 900;
-            letter-spacing: 2px;
+            font-weight: 700;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            color: var(--primary);
+            color: var(--text-main);
             text-align: center;
             margin-bottom: 6px;
         }
@@ -389,7 +419,7 @@
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 10px;
-            color: var(--text);
+            color: var(--text-main);
             font-size: 1.05rem;
             font-weight: 800;
             cursor: pointer;
@@ -406,16 +436,16 @@
         .d-btn:hover { background: var(--border); border-color: var(--primary); }
         .d-btn:active, .d-btn.active {
             background: var(--primary);
-            color: var(--btn-text);
+            color: #ffffff;
             transform: scale(0.93);
-            border-color: var(--primary-light);
-            box-shadow: 0 0 12px rgba(209, 149, 30, 0.5);
+            border-color: var(--primary-hover);
+            box-shadow: 0 0 12px rgba(0, 123, 255, 0.4);
         }
 
         .btn-stop { background: var(--danger); color: #fff; border-color: var(--danger); font-size: 0.75rem; }
-        .btn-stop:hover { background: #b91c1c; }
+        .btn-stop:hover { background: #c0392b; }
         .btn-stop:active, .btn-stop.active {
-            background: #b91c1c;
+            background: #c0392b;
             color: #fff;
             transform: scale(0.93);
             box-shadow: 0 0 12px rgba(231, 76, 60, 0.6);
@@ -424,9 +454,10 @@
         /* ================= Video History Panel ================= */
         .video-history-panel {
             margin-top: 28px;
-            background: var(--bg);
+            background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 12px;
+            box-shadow: var(--shadow);
             padding: 20px 22px;
         }
 
@@ -516,6 +547,100 @@
         .stat-value { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
         .stat-label { font-size: 0.65rem; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
 
+        .profile-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 24px 0 20px;
+        }
+
+        .profile-section-header {
+            text-align: left;
+            margin-bottom: 16px;
+        }
+
+        .profile-section-header h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .profile-section-header p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .profile-video-summary {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 16px;
+            text-align: left;
+        }
+
+        .profile-video-summary .pvs-icon {
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-video-summary .pvs-info {
+            flex: 1;
+        }
+
+        .profile-video-summary .pvs-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .profile-video-summary .pvs-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .profile-alert {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .profile-alert.success {
+            background: rgba(46, 204, 113, 0.12);
+            border: 1px solid var(--success);
+            color: #27ae60;
+        }
+
+        .profile-alert.error {
+            background: rgba(231, 76, 60, 0.12);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        @media (max-width: 480px) {
+            .profile-stats {
+                flex-wrap: wrap;
+            }
+            .stat-item {
+                min-width: 50%;
+                border-bottom: 1px solid var(--border);
+            }
+            .stat-item:nth-child(2) {
+                border-right: none;
+            }
+        }
+
         /* ================= Animations (Completed) ================= */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -563,7 +688,7 @@
         <div class="auth-card">
             <div class="brand">
                 <div class="brand-text">
-                    <span class="brand-name">Nexus</span>
+                    <span class="brand-name">SSR</span>
                     <span class="brand-sub">Control System</span>
                 </div>
             </div>
@@ -586,7 +711,12 @@
                 </div>
                 <div class="input-group">
                     <label class="input-label">Passcode</label>
-                    <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
+                    <div class="password-wrapper">
+                        <input type="password" id="loginPassword" placeholder="Enter secure passcode" value="SecurePass@123">
+                        <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Show Passcode" aria-label="Toggle passcode visibility">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label class="input-label">Car Wi-Fi Key <span style="font-size:0.7rem; color:var(--text-muted);">(1000 - 1010)</span></label>
@@ -605,11 +735,21 @@
                 </div>
                 <div class="input-group">
                     <label class="input-label">New Passcode</label>
-                    <input type="password" id="regPassword" placeholder="Create secure passcode">
+                    <div class="password-wrapper">
+                        <input type="password" id="regPassword" placeholder="Create secure passcode">
+                        <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('regPassword', this)" title="Show Passcode" aria-label="Toggle passcode visibility">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label class="input-label">Confirm Passcode</label>
-                    <input type="password" id="regPasswordConfirm" placeholder="Re-enter secure passcode">
+                    <div class="password-wrapper">
+                        <input type="password" id="regPasswordConfirm" placeholder="Re-enter secure passcode">
+                        <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('regPasswordConfirm', this)" title="Show Passcode" aria-label="Toggle passcode visibility">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label class="input-label">Choose Car Wi-Fi Key <span style="font-size:0.7rem; color:var(--success); font-weight:700;">(1000 - 1010)</span></label>
@@ -630,12 +770,11 @@
         
         <!-- TOP NAVIGATION -->
         <nav class="topnav">
-            <div class="topnav-brand">Nexus Control</div>
+            <div class="topnav-brand">SSR</div>
             <div class="topnav-links" id="navMenu">
                 <a href="#" class="nav-link active" onclick="switchTab('dashboard')">Dashboard</a>
                 <a href="#" class="nav-link" onclick="switchTab('profile')">Profile</a>
-                <button class="btn btn-outline btn-sm" onclick="cycleTheme()">Toggle Theme</button>
-                <button class="btn btn-danger btn-sm" onclick="logout()">Terminate</button>
+                <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
             </div>
             <button class="nav-toggle-btn" onclick="toggleMobileNav()">☰</button>
         </nav>
@@ -643,8 +782,8 @@
         <!-- DASHBOARD TAB -->
         <main id="dashboardTab" class="dashboard-main">
             <div class="container" style="animation: fadeIn 0.4s ease-out;">
-                <h2>Live Telemetry</h2>
-                <p class="subtitle">Video feed & remote manual override controls. Use on-screen buttons, <b>WASD</b>, or <b>Arrow keys</b> (Space to Stop).</p>
+                <h2>Live View</h2>
+                <p class="subtitle">Video feed & remote manual override controls. Use on-screen buttons, <b>WASD</b></p>
 
                 <div class="video-container vertical-mode" id="videoContainer">
                     <img id="streamFeed" src="/api/stream" crossorigin="anonymous" style="width:100%; height:100%; object-fit:contain; background:#000;" onerror="this.style.display='none'; document.getElementById('camOffline').style.display='block';">
@@ -664,14 +803,11 @@
                         </div>
                     </div>
 
-                    <!-- Orientation & Rotation Controls -->
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <!-- Orientation Controls -->
+                    <div style="display:flex; align-items:center;">
                         <button id="orientationBtn" class="btn btn-sm btn-outline" onclick="toggleCameraOrientation()" title="Switch between Vertical & Horizontal" style="display:flex; align-items:center; gap:6px; font-weight:700; cursor:pointer;">
                             <span id="orientationIcon">📱</span>
-                            <span id="orientationText">Vertical View</span>
-                        </button>
-                        <button class="btn btn-sm btn-outline" onclick="rotateCameraStep(90)" title="Rotate 90 degrees" style="display:flex; align-items:center; gap:4px; font-weight:700; cursor:pointer;">
-                            🔄 90°
+                            <span id="orientationText">Vertical</span>
                         </button>
                     </div>
 
@@ -689,17 +825,27 @@
                     <div></div>
                 </div>
 
-                <!-- Servo Pan Control Slider -->
-                <div style="max-width: 340px; margin: 24px auto; text-align: center; background: var(--surface2); padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                        <span style="font-size:0.85rem; font-weight:700; color:var(--text);">Camera Pan Angle</span>
-                        <span style="font-size:0.95rem; font-weight:900; color:var(--primary);"><span id="angleText">90</span>°</span>
+                <!-- Smooth Servo Tilt Control Buttons -->
+                <div class="servo-panel" style="max-width: 340px; margin: 20px auto; text-align: center; background: var(--surface2); padding: 14px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <label class="input-label" style="font-weight: 700; margin: 0; font-size: 0.95rem;">Camera Tilt: <span id="angleText" style="color:var(--primary); font-weight: 900;">90</span>°</label>
+                        <button id="invertTiltBtn" type="button" class="btn btn-sm btn-outline" onclick="toggleServoInvert()" title="Click to invert Up and Down directions" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+                            <span id="invertStatusIcon">🔄</span> Inverted (Up tilts Up)
+                        </button>
                     </div>
-                    <input type="range" id="panSlider" min="0" max="180" value="90" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="updateServoPan(this.value)">
-                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
-                        <span>0° (Left)</span>
-                        <span>90° (Center)</span>
-                        <span>180° (Right)</span>
+
+                    <!-- Instant Click + Hold Buttons -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <button class="btn btn-outline" style="flex: 1; padding: 10px 0; font-size: 0.85rem; font-weight: 700; user-select: none;" 
+                                onmousedown="startTilt('UP')" onmouseup="stopPan()" onmouseleave="stopPan()"
+                                ontouchstart="startTilt('UP')" ontouchend="stopPan()" title="Tilt Camera Up (R)">▼ Down</button>
+                        
+                        <button class="btn btn-primary" style="flex: 1; padding: 10px 0; font-size: 0.85rem; font-weight: 700;" 
+                                onclick="moveToCenter()" title="Reset to Center Horizon">Center</button>
+                        
+                        <button class="btn btn-outline" style="flex: 1; padding: 10px 0; font-size: 0.85rem; font-weight: 700; user-select: none;" 
+                                onmousedown="startTilt('DOWN')" onmouseup="stopPan()" onmouseleave="stopPan()"
+                                ontouchstart="startTilt('DOWN')" ontouchend="stopPan()" title="Tilt Camera Down (F)">▲ Up</button>
                     </div>
                 </div>
 
@@ -717,31 +863,41 @@
 
         <!-- PROFILE TAB (Hidden by default) -->
         <main id="profileTab" class="profile-main hidden">
-            <div class="profile-card" style="animation: fadeIn 0.4s ease-out;">
+            <div class="profile-card" style="animation: fadeIn 0.4s ease-out; max-width: 440px;">
                 <div class="profile-avatar">
                     <div class="avatar-icon">🛡️</div>
                 </div>
-                <h2>System Admin</h2>
-                <div class="profile-role">LEVEL 5 CLEARANCE</div>
+                <h2 id="profileUsername" style="margin-bottom: 4px;">Operator</h2>
+                <div class="profile-role" id="profileRole" style="margin-bottom: 12px;">ACTIVE OPERATOR</div>
                 
-                <div class="auth-badge" style="background: rgba(46, 204, 113, 0.1); border-color: var(--success); color: var(--success); margin-bottom:0;">
-                    <div class="auth-badge-dot" style="background: var(--success);"></div> ACTIVE
+                <div class="auth-badge" style="background: rgba(46, 204, 113, 0.1); border-color: var(--success); color: var(--success); margin-bottom: 24px;">
+                    <div class="auth-badge-dot" style="background: var(--success);"></div> ACTIVE SESSION
                 </div>
 
-                <div class="profile-stats">
-                    <div class="stat-item">
-                        <span class="stat-value">99%</span>
-                        <span class="stat-label">Uptime</span>
+                <div id="profileUpdateAlert" class="profile-alert hidden"></div>
+
+                <form id="profileUpdateForm" onsubmit="handleProfileUpdate(event)">
+                    <div class="input-group">
+                        <label class="input-label" for="profileNewUsername">Username</label>
+                        <input type="text" id="profileNewUsername" placeholder="Enter username" autocomplete="username" required>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-value">12</span>
-                        <span class="stat-label">Operations</span>
+
+                    <div class="input-group">
+                        <label class="input-label" for="profileNewPassword">Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="profileNewPassword" placeholder="Enter password" autocomplete="current-password" required>
+                            <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('profileNewPassword', this)" title="Show Passcode" aria-label="Show passcode">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-value">0ms</span>
-                        <span class="stat-label">Ping</span>
+
+                    <div style="margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" id="saveProfileBtn" style="width: 100%;">
+                            <span>💾</span> Update
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
         </main>
 
@@ -756,6 +912,25 @@
         function cycleTheme() {
             currentThemeIndex = (currentThemeIndex + 1) % themes.length;
             document.documentElement.setAttribute('data-theme', themes[currentThemeIndex]);
+        }
+
+        const EYE_OPEN_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const EYE_CLOSED_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+        function togglePasswordVisibility(inputId, btnEl) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btnEl.innerHTML = EYE_CLOSED_SVG;
+                btnEl.setAttribute('aria-label', 'Hide passcode');
+                btnEl.title = 'Hide Passcode';
+            } else {
+                input.type = 'password';
+                btnEl.innerHTML = EYE_OPEN_SVG;
+                btnEl.setAttribute('aria-label', 'Show passcode');
+                btnEl.title = 'Show Passcode';
+            }
         }
 
         function switchAuthMode(mode) {
@@ -891,17 +1066,13 @@
 
                 if (response.ok && data.success) {
                     currentSessionId = data.session_id;
+                    localStorage.setItem('rover_session_id', data.session_id);
+                    if (data.username) localStorage.setItem('rover_username', data.username);
+                    if (password) sessionStorage.setItem('rover_password', password);
+                    if (data.car_connected) localStorage.setItem('rover_car_connected', data.car_connected);
                     console.log("Session started in Database:", currentSessionId);
-                    document.getElementById('authView').classList.add('hidden');
-                    document.getElementById('mainApp').classList.remove('hidden');
-
-                    const feed = document.getElementById('streamFeed');
-                    feed.src = '/api/stream';
-                    feed.style.display = 'block';
-                    document.getElementById('camOffline').style.display = 'none';
-
-                    syncCameraOrientation();
-                    fetchVideos();
+                    updateProfileDisplay(data.username, data.car_connected);
+                    activateAppUI();
                 } else {
                     errEl.textContent = data.detail || 'Access Denied: Invalid credentials';
                     errEl.style.display = 'block';
@@ -913,20 +1084,97 @@
             }
         }
 
-        async function logout() {
-            if (!currentSessionId) return;
+        function updateProfileDisplay(username, carName) {
+            const name = username || localStorage.getItem('rover_username') || 'Operator';
+            const userEl = document.getElementById('profileUsername');
+            if (userEl) userEl.textContent = name;
+
+            const rover = carName || localStorage.getItem('rover_car_connected') || (name !== 'Operator' ? `${name}'s Rover` : '');
+            const roleEl = document.getElementById('profileRole');
+            if (roleEl) {
+                roleEl.textContent = rover ? `ROVER: ${rover.toUpperCase()}` : 'ACTIVE OPERATOR';
+            }
+
+            const inputUser = document.getElementById('profileNewUsername');
+            if (inputUser) {
+                inputUser.value = name;
+            }
+
+            const inputPass = document.getElementById('profileNewPassword');
+            if (inputPass) {
+                const savedPw = sessionStorage.getItem('rover_password');
+                if (savedPw) {
+                    inputPass.value = savedPw;
+                }
+            }
+        }
+
+        function activateAppUI() {
+            document.getElementById('authView').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+
+            updateProfileDisplay();
+
+            const feed = document.getElementById('streamFeed');
+            if (feed) {
+                feed.src = '/api/stream';
+                feed.style.display = 'block';
+            }
+            const offlineEl = document.getElementById('camOffline');
+            if (offlineEl) offlineEl.style.display = 'none';
+
+            syncCameraOrientation();
+            syncServoAngle();
+            fetchVideos();
+        }
+
+        async function restoreSessionIfActive() {
+            const savedSessionId = localStorage.getItem('rover_session_id');
+            if (!savedSessionId) return;
 
             try {
-                await fetch('/api/logout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: currentSessionId })
-                });
+                const res = await fetch(`/api/session/verify?session_id=${encodeURIComponent(savedSessionId)}`);
+                const data = await res.json();
+                if (res.ok && data.valid) {
+                    currentSessionId = parseInt(savedSessionId);
+                    if (data.username) localStorage.setItem('rover_username', data.username);
+                    if (data.car_connected) localStorage.setItem('rover_car_connected', data.car_connected);
+                    console.log("Restored active session:", currentSessionId);
+                    updateProfileDisplay(data.username, data.car_connected);
+                    activateAppUI();
+                } else {
+                    // Session is no longer active in database
+                    console.log("Saved session is no longer active or was terminated.");
+                    localStorage.removeItem('rover_session_id');
+                    localStorage.removeItem('rover_username');
+                    localStorage.removeItem('rover_car_connected');
+                    currentSessionId = null;
+                }
             } catch (err) {
-                console.error("Logout Error:", err);
+                console.warn("Could not verify session with server:", err);
+            }
+        }
+
+        async function logout() {
+            const sid = currentSessionId || localStorage.getItem('rover_session_id');
+            if (sid) {
+                try {
+                    await fetch('/api/logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: parseInt(sid) })
+                    });
+                } catch (err) {
+                    console.error("Logout Error:", err);
+                }
             }
 
             currentSessionId = null;
+            localStorage.removeItem('rover_session_id');
+            localStorage.removeItem('rover_username');
+            localStorage.removeItem('rover_car_connected');
+            sessionStorage.removeItem('rover_password');
+
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('authView').classList.remove('hidden');
             const streamFeed = document.getElementById('streamFeed');
@@ -934,13 +1182,6 @@
             switchTab('dashboard');
             alert("အောင်မြင်စွာ ထွက်ပြီးပါပြီ။ ကားကို အခြားသူများ ပြန်လည်အသုံးပြုနိုင်ပါပြီ။");
         }
-
-        window.addEventListener("beforeunload", function (e) {
-            if (currentSessionId) {
-                const blob = new Blob([JSON.stringify({ session_id: currentSessionId })], { type: 'application/json' });
-                navigator.sendBeacon('/api/logout', blob);
-            }
-        });
 
         function switchTab(tabName) {
             const links = document.querySelectorAll('.nav-link');
@@ -956,6 +1197,8 @@
                 document.getElementById('dashboardTab').classList.remove('hidden');
             } else if (tabName === 'profile') {
                 document.getElementById('profileTab').classList.remove('hidden');
+                updateProfileDisplay();
+                fetchVideos();
             }
             document.getElementById('navMenu').classList.remove('open');
         }
@@ -974,6 +1217,136 @@
                 body: JSON.stringify({ action: action })
             })
             .catch(err => console.error("Control Error:", err));
+        }
+
+        // ================= Smooth Servo Tilt Controls =================
+        const API_BASE = '';
+        let currentPanAngle = 90;
+        let panInterval = null;
+        let panTimeout = null;
+        let isPanning = false;
+        let isSendingPan = false;
+
+        // Invert by default: user's physical servo tilts down when angle increases, so Up needs -5 (decrease angle)
+        let isServoInverted = localStorage.getItem('rover_servo_inverted') !== null ? 
+                              (localStorage.getItem('rover_servo_inverted') === 'true') : true;
+
+        function updateInvertButtonUI() {
+            const btn = document.getElementById('invertTiltBtn');
+            if (btn) {
+                if (isServoInverted) {
+                    btn.classList.add('btn-primary');
+                    btn.classList.remove('btn-outline');
+                    btn.innerHTML = `<span id="invertStatusIcon">🔄</span> Inverted (Up tilts Up)`;
+                } else {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline');
+                    btn.innerHTML = `<span id="invertStatusIcon">🔄</span> Normal (Up: +deg)`;
+                }
+            }
+        }
+
+        function toggleServoInvert() {
+            isServoInverted = !isServoInverted;
+            localStorage.setItem('rover_servo_inverted', isServoInverted);
+            updateInvertButtonUI();
+        }
+
+        // Send Angle to Backend (with in-flight guard to prevent network data flooding)
+        async function sendPanAngle(angle) {
+            currentPanAngle = parseInt(angle);
+            if (currentPanAngle < 0) currentPanAngle = 0;
+            if (currentPanAngle > 180) currentPanAngle = 180;
+
+            const angleEl = document.getElementById('angleText');
+            if (angleEl) angleEl.innerText = currentPanAngle;
+
+            if (isSendingPan) return; // Drop redundant rapid requests
+            isSendingPan = true;
+
+            const sid = currentSessionId || localStorage.getItem('rover_session_id');
+            try {
+                await fetch(`${API_BASE}/api/control/pan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        angle: currentPanAngle,
+                        session_id: sid
+                    })
+                });
+            } catch (err) {
+                console.error("Servo Control Error:", err);
+            } finally {
+                isSendingPan = false;
+            }
+        }
+
+        function stepPan(direction) {
+            // When isServoInverted is true:
+            // UP = -5 (decreases angle, tilting physical camera UP)
+            // DOWN = +5 (increases angle, tilting physical camera DOWN)
+            let step = (direction === 'UP') ? -5 : 5;
+            if (!isServoInverted) {
+                step = -step; // Normal mode: UP = +5, DOWN = -5
+            }
+
+            let newAngle = currentPanAngle + step;
+            if (newAngle < 0) newAngle = 0;
+            if (newAngle > 180) newAngle = 180;
+
+            if (newAngle !== currentPanAngle) {
+                sendPanAngle(newAngle);
+            }
+        }
+
+        // Instant click step + safe interval hold
+        function startTilt(direction) {
+            stopPan();
+            isPanning = true;
+            // 1. Immediate step on press
+            stepPan(direction);
+
+            // 2. If held down longer than 300ms, repeat every 200ms (safe, low network traffic)
+            panTimeout = setTimeout(() => {
+                panInterval = setInterval(() => {
+                    stepPan(direction);
+                }, 200);
+            }, 300);
+        }
+
+        function stopPan() {
+            isPanning = false;
+            if (panTimeout) {
+                clearTimeout(panTimeout);
+                panTimeout = null;
+            }
+            if (panInterval) {
+                clearInterval(panInterval);
+                panInterval = null;
+            }
+        }
+
+        // Reset camera tilt directly to 90 degrees (single request)
+        function moveToCenter() {
+            stopPan();
+            sendPanAngle(90);
+        }
+
+        async function syncServoAngle() {
+            updateInvertButtonUI();
+            try {
+                const res = await fetch('/api/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.servo_angle !== undefined) {
+                        currentPanAngle = parseInt(data.servo_angle);
+                        const angleEl = document.getElementById('angleText');
+                        if (angleEl) angleEl.innerText = currentPanAngle;
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not sync servo angle:", e);
+            }
         }
 
         // ================= Keyboard Driving Controls =================
@@ -1004,6 +1377,19 @@
             if (!canDrive()) return;
 
             const key = e.key.toLowerCase();
+
+            // Keyboard Tilt Hotkeys (R: Tilt Up, F: Tilt Down)
+            if (key === 'r') {
+                e.preventDefault();
+                stepPan('UP');
+                return;
+            }
+            if (key === 'f') {
+                e.preventDefault();
+                stepPan('DOWN');
+                return;
+            }
+
             const mapping = KEY_COMMAND_MAP[key];
 
             if (mapping) {
@@ -1088,33 +1474,7 @@
             });
         }
 
-        // ================= Servo Pan Control =================
-        let servoDebounceTimer = null;
 
-        async function updateServoPan(angle) {
-            const angleVal = parseInt(angle);
-            const textEl = document.getElementById('angleText');
-            if (textEl) textEl.innerText = angleVal;
-
-            // Debounce rapid slider updates to prevent overwhelming network
-            clearTimeout(servoDebounceTimer);
-            servoDebounceTimer = setTimeout(async () => {
-                try {
-                    await fetch('/api/control/pan', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            angle: angleVal,
-                            session_id: currentSessionId
-                        })
-                    });
-                } catch (err) {
-                    console.error("Servo Control Error:", err);
-                }
-            }, 40);
-        }
 
         // ================= Camera Orientation & Rotation =================
         let currentRotation = 90; // Default: 90 degrees (Vertical / Portrait View)
@@ -1149,7 +1509,7 @@
             }
 
             if (textEl) {
-                textEl.innerText = isVertical ? `Vertical (${currentRotation}°)` : `Horizontal (${currentRotation}°)`;
+                textEl.innerText = isVertical ? 'Vertical' : 'Horizontal';
             }
             if (iconEl) {
                 iconEl.innerText = isVertical ? '📱' : '🖥️';
@@ -1351,7 +1711,8 @@
 
             // 2. Upload to server's records directory & database
             try {
-                const uploadUrl = currentSessionId ? `/api/records/upload?session_id=${currentSessionId}` : '/api/records/upload';
+                const sid = currentSessionId || localStorage.getItem('rover_session_id');
+                const uploadUrl = sid ? `/api/records/upload?session_id=${encodeURIComponent(sid)}` : '/api/records/upload';
                 await fetch(uploadUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'video/webm' },
@@ -1365,31 +1726,111 @@
 
         async function fetchVideos() {
             const listEl = document.getElementById('videoList');
-            if (!listEl) return;
+            const sid = currentSessionId || localStorage.getItem('rover_session_id');
+            if (!sid) {
+                if (listEl) listEl.textContent = 'No recordings found for your account.';
+                return;
+            }
             try {
-                const res = await fetch('/api/videos');
+                const res = await fetch(`/api/videos?session_id=${encodeURIComponent(sid)}`);
                 const data = await res.json();
-                if (data.videos && data.videos.length > 0) {
-                    listEl.innerHTML = data.videos.map(v => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-                            <span style="font-size:0.85rem;">📹 ${v}</span>
-                            <div style="display:flex; gap:10px;">
-                                <a href="/records/${v}" target="_blank" style="color:var(--primary); font-size:0.8rem; text-decoration:none; font-weight:700;">View</a>
-                                <a href="/records/${v}" download="${v}" style="color:var(--success); font-size:0.8rem; text-decoration:none; font-weight:700;">Download</a>
+                if (listEl) {
+                    if (data.videos && data.videos.length > 0) {
+                        listEl.innerHTML = data.videos.map(v => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                                <span style="font-size:0.85rem;">📹 ${v}</span>
+                                <div style="display:flex; gap:10px;">
+                                    <a href="/records/${v}" target="_blank" style="color:var(--primary); font-size:0.8rem; text-decoration:none; font-weight:700;">View</a>
+                                    <a href="/records/${v}" download="${v}" style="color:var(--success); font-size:0.8rem; text-decoration:none; font-weight:700;">Download</a>
+                                </div>
                             </div>
-                        </div>
-                    `).join('');
-                } else {
-                    listEl.textContent = 'No recordings found in system records.';
+                        `).join('');
+                    } else {
+                        listEl.textContent = 'No recordings found for your account.';
+                    }
                 }
             } catch (e) {
-                listEl.textContent = 'Could not load video history.';
+                if (listEl) listEl.textContent = 'Could not load video history.';
             }
         }
 
-        // Initialize orientation and mobile controls on page load
+        async function handleProfileUpdate(event) {
+            event.preventDefault();
+            const alertBox = document.getElementById('profileUpdateAlert');
+            const saveBtn = document.getElementById('saveProfileBtn');
+
+            function showProfileAlert(msg, isSuccess) {
+                if (!alertBox) return;
+                alertBox.className = `profile-alert ${isSuccess ? 'success' : 'error'}`;
+                alertBox.innerHTML = `<span>${isSuccess ? '✅' : '⚠️'}</span> <span>${msg}</span>`;
+                alertBox.classList.remove('hidden');
+            }
+
+            const sid = currentSessionId || localStorage.getItem('rover_session_id');
+            if (!sid) {
+                showProfileAlert("Active session not found. Please log in again.", false);
+                return;
+            }
+
+            const newUsername = document.getElementById('profileNewUsername').value.trim();
+            const newPassword = document.getElementById('profileNewPassword').value.trim();
+
+            if (!newUsername) {
+                showProfileAlert("Username cannot be empty.", false);
+                return;
+            }
+
+            if (newPassword && newPassword.length < 4) {
+                showProfileAlert("Password must be at least 4 characters long.", false);
+                return;
+            }
+
+            try {
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<span>⏳</span> Updating...';
+                }
+
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: parseInt(sid),
+                        username: newUsername,
+                        password: newPassword || null
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showProfileAlert(data.message || "Updated successfully!", true);
+                    const finalUser = data.username || newUsername;
+                    localStorage.setItem('rover_username', finalUser);
+                    const carConn = data.car_connected || `${finalUser}'s Rover`;
+                    localStorage.setItem('rover_car_connected', carConn);
+                    updateProfileDisplay(finalUser, carConn);
+                    if (newPassword) {
+                        sessionStorage.setItem('rover_password', newPassword);
+                    }
+                } else {
+                    const errorMsg = data.detail || data.message || "Failed to update.";
+                    showProfileAlert(errorMsg, false);
+                }
+            } catch (err) {
+                showProfileAlert("Error communicating with server: " + err.message, false);
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<span>💾</span> Update';
+                }
+            }
+        }
+
+        // Initialize orientation, mobile controls, servo, and restore active session on page load
         syncCameraOrientation();
+        syncServoAngle();
         initMobileTouchControls();
+        restoreSessionIfActive();
     </script>
 </body>
 </html>
